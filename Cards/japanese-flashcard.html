@@ -207,10 +207,20 @@ body {
   text-align:center; font-family:'Noto Sans KR',sans-serif;
 }
 .settings-unit { font-size:12px; color:var(--muted); }
+.ptr-indicator {
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  display:flex; justify-content:center; align-items:center;
+  font-size:12px; color:var(--muted); font-family:'Noto Sans KR',sans-serif;
+  transition:height .2s; overflow:hidden; height:0;
+  background:rgba(15,52,96,.9);
+}
+.ptr-indicator.pulling { transition:none; }
+.ptr-indicator.refreshing { height:36px; }
 </style>
 </head>
 <body>
 
+<div id="ptr-el" class="ptr-indicator"></div>
 <div id="app"></div>
 <div id="settings-root"></div>
 
@@ -479,6 +489,45 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") goPrev();
   if (e.key === " ") { e.preventDefault(); togglePlay(); }
 });
+
+// === PULL TO REFRESH ===
+(function() {
+  const ptrEl = document.getElementById("ptr-el");
+  const threshold = 80;
+  let ptrStartY = 0, ptrDist = 0, ptrActive = false;
+  document.addEventListener("touchstart", e => {
+    // 카드 영역 스와이프와 충돌 방지: 헤더/DAY 영역에서만 시작
+    if (e.target.closest(".card-area")) return;
+    ptrStartY = e.touches[0].clientY;
+    ptrDist = 0;
+    ptrActive = true;
+  }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if (!ptrActive) return;
+    ptrDist = e.touches[0].clientY - ptrStartY;
+    if (ptrDist > 0) {
+      const h = Math.min(ptrDist * 0.4, 50);
+      ptrEl.className = "ptr-indicator pulling";
+      ptrEl.style.height = h + "px";
+      ptrEl.textContent = ptrDist > threshold ? "놓으면 새로고침" : "↓ 당겨서 새로고침";
+    }
+  }, { passive: true });
+  document.addEventListener("touchend", () => {
+    if (!ptrActive) return;
+    ptrActive = false;
+    if (ptrDist > threshold) {
+      ptrEl.className = "ptr-indicator refreshing";
+      ptrEl.style.height = "";
+      ptrEl.textContent = "새로고침 중...";
+      setTimeout(() => location.reload(), 300);
+    } else {
+      ptrEl.className = "ptr-indicator";
+      ptrEl.style.height = "";
+      ptrEl.textContent = "";
+    }
+    ptrDist = 0;
+  });
+})();
 
 // === RENDER ===
 function render() {
