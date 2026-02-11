@@ -64,7 +64,22 @@ body {
   border-radius:20px; margin:4px 0; padding:24px 20px 16px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
   box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 40px var(--accent-glow);
-  border:1px solid rgba(233,69,96,.15); position:relative; transition:transform .2s;
+  border:1px solid rgba(233,69,96,.15); position:relative;
+  transition:transform .25s ease, opacity .25s ease;
+}
+.card-area.slide-left {
+  animation:slideLeft .25s ease;
+}
+.card-area.slide-right {
+  animation:slideRight .25s ease;
+}
+@keyframes slideLeft {
+  0% { transform:translateX(60px); opacity:0; }
+  100% { transform:translateX(0); opacity:1; }
+}
+@keyframes slideRight {
+  0% { transform:translateX(-60px); opacity:0; }
+  100% { transform:translateX(0); opacity:1; }
 }
 .bookmark-btn {
   position:absolute; top:16px; right:16px; background:none; border:none;
@@ -354,7 +369,7 @@ const DAYS = Object.keys(WORD_DATA).map(Number);
 // === STATE ===
 let state = {
   day: 1, idx: 0, playing: false, playCount: 0,
-  showMeaning: true, speed: 1.0, showSettings: false,
+  showMeaning: true, speed: 1.0, showSettings: false, slideDir: "",
   repeatDelay: Number(localStorage.getItem("jp-repeat-delay")) || 2400,
   mode: "menu", // menu | study | test | result
   testWords: [], testIdx: 0, testRevealed: false,
@@ -413,7 +428,7 @@ function autoPlay(count) {
     autoTimer = setTimeout(() => {
       if (playId !== myId) return;
       if (state.idx < words.length - 1) {
-        state.idx++;
+        state.idx++; state.slideDir = "left";
         render();
         autoPlay(0);
       } else { stopAuto(); render(); }
@@ -490,26 +505,26 @@ function onTE(e) {
 }
 function goNext() {
   if (state.mode === "test") {
-    if (state.testIdx < state.testWords.length - 1) { state.testIdx++; state.testRevealed = false; render(); }
+    if (state.testIdx < state.testWords.length - 1) { state.testIdx++; state.testRevealed = false; state.slideDir = "left"; render(); }
     return;
   }
   const words = getWords();
   if (state.idx < words.length - 1) {
     const wasPlaying = state.playing;
     if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
-    state.idx++; state.playCount = 0; render();
+    state.idx++; state.playCount = 0; state.slideDir = "left"; render();
     if (wasPlaying) autoPlay(0);
   }
 }
 function goPrev() {
   if (state.mode === "test") {
-    if (state.testIdx > 0) { state.testIdx--; state.testRevealed = false; render(); }
+    if (state.testIdx > 0) { state.testIdx--; state.testRevealed = false; state.slideDir = "right"; render(); }
     return;
   }
   if (state.idx > 0) {
     const wasPlaying = state.playing;
     if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
-    state.idx--; state.playCount = 0; render();
+    state.idx--; state.playCount = 0; state.slideDir = "right"; render();
     if (wasPlaying) autoPlay(0);
   }
 }
@@ -645,7 +660,9 @@ function render() {
     const bmActive = (state.mode === "study") ? isBm(w) : false;
     const meaningHidden = state.mode === "test" ? !state.testRevealed : !state.showMeaning;
 
-    html += `<div class="card-area" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE(event)">`;
+    const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
+    html += `<div class="card-area${slideClass}" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE(event)">`;
+    state.slideDir = "";
 
     // Bookmark (study only)
     if (state.mode === "study") {
