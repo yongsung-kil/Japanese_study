@@ -354,7 +354,7 @@ function autoPlay(count) {
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
   speak(text, () => {
     if (!state.playing || playId !== myId) return;
-    autoTimer = setTimeout(() => autoPlay(count + 1), 400);
+    autoTimer = setTimeout(() => autoPlay(count + 1), 2400);
   });
 }
 
