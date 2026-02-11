@@ -1,0 +1,17 @@
+{
+  "name": "日本語 단어장",
+  "short_name": "日本語",
+  "description": "일본어 플래시카드 단어장",
+  "start_url": "./japanese-flashcard.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
