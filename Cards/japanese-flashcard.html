@@ -500,7 +500,7 @@ function render() {
     const bmActive = (state.mode === "study") ? isBm(w) : false;
     const meaningHidden = state.mode === "test" ? !state.testRevealed : !state.showMeaning;
 
-    html += `<div class="card-area" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE()">`;
+    html += `<div class="card-area" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE(event)">`;
 
     // Bookmark (study only)
     if (state.mode === "study") {
