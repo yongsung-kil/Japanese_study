@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>日本語 단어장</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg: #1a1a2e; --bg-card: #16213e; --bg-inner: #0f3460;
+  --accent: #e94560; --accent-soft: #ff6b6b; --accent-glow: rgba(233,69,96,0.3);
+  --text: #eaeaea; --muted: #8892b0; --success: #00d2d3;
+  --day-active: #e94560; --day-inactive: #233554;
+}
+body {
+  min-height:100vh; background:linear-gradient(135deg,var(--bg) 0%,#16213e 50%,#0f3460 100%);
+  font-family:'Noto Sans KR',sans-serif; color:var(--text);
+  display:flex; flex-direction:column; align-items:center;
+  overflow-x:hidden; user-select:none;
+}
+.header {
+  width:100%; max-width:480px; padding:16px 20px 8px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.logo { font-size:22px; font-weight:900; color:var(--accent); font-family:'Zen Maru Gothic',sans-serif; }
+.logo-sub { font-size:13px; color:var(--muted); font-weight:300; margin-left:8px; }
+.test-btn {
+  background:var(--accent); border:none; border-radius:20px; padding:6px 14px;
+  color:#fff; font-size:12px; font-weight:700; cursor:pointer;
+  font-family:'Noto Sans KR',sans-serif; transition:all .2s;
+}
+.test-btn.disabled { background:var(--day-inactive); cursor:default; }
+.days {
+  width:100%; max-width:480px; padding:8px 20px;
+  display:flex; gap:8px; overflow-x:auto; scrollbar-width:none;
+}
+.days::-webkit-scrollbar { display:none; }
+.day-btn {
+  flex:0 0 auto; border-radius:12px; padding:8px 14px;
+  font-size:12px; cursor:pointer; transition:all .3s;
+  font-family:'Noto Sans KR',sans-serif; border:2px solid transparent;
+  background:var(--day-inactive); color:var(--muted); font-weight:400;
+}
+.day-btn.active {
+  background:var(--day-active); color:#fff; font-weight:700;
+  border-color:var(--accent); box-shadow:0 0 15px var(--accent-glow);
+}
+.info {
+  width:100%; max-width:480px; padding:4px 20px 8px;
+  font-size:13px; color:var(--muted); font-weight:300;
+}
+.card-area {
+  width:calc(100% - 40px); max-width:440px; min-height:380px;
+  background:linear-gradient(145deg,var(--bg-inner),var(--bg-card));
+  border-radius:24px; margin:8px 0; padding:40px 24px 32px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 40px var(--accent-glow);
+  border:1px solid rgba(233,69,96,.15); position:relative; transition:transform .2s;
+}
+.bookmark-btn {
+  position:absolute; top:16px; right:16px; background:none; border:none;
+  font-size:24px; cursor:pointer; color:var(--muted); transition:all .2s;
+}
+.bookmark-btn.active { color:var(--accent); filter:drop-shadow(0 0 6px var(--accent-glow)); }
+.play-dots {
+  position:absolute; top:16px; left:16px; display:flex; gap:4px;
+}
+.dot {
+  width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.15); transition:background .3s;
+}
+.dot.filled { background:var(--accent); }
+.hiragana {
+  font-size:64px; font-weight:900; color:#fff;
+  font-family:'Zen Maru Gothic',sans-serif; letter-spacing:4px;
+  text-shadow:0 0 30px var(--accent-glow); line-height:1.3; text-align:center;
+}
+.hiragana.small { font-size:48px; }
+.romaji { font-size:16px; color:var(--muted); font-weight:300; letter-spacing:2px; }
+.meaning {
+  font-size:18px; font-weight:500; color:var(--text); border-radius:8px;
+  padding:8px 20px; cursor:pointer; transition:all .3s; text-align:center; min-width:120px;
+}
+.meaning.hidden { color:transparent; background:rgba(255,255,255,.08); }
+.speak-btn {
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  border-radius:50%; width:48px; height:48px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:20px; margin-top:4px; transition:all .2s;
+}
+.controls {
+  width:100%; max-width:480px; padding:16px 20px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.ctrl-col { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.speed-btn {
+  background:none; border:none; color:var(--text);
+  font-size:18px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+}
+.speed-label { font-size:10px; color:var(--muted); }
+.play-btn {
+  width:64px; height:64px; border-radius:50%; border:none;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:24px; color:#fff; transition:all .2s;
+  background:linear-gradient(135deg,var(--accent),#c0392b);
+  box-shadow:0 4px 25px var(--accent-glow);
+}
+.play-btn.playing { background:linear-gradient(135deg,var(--accent),var(--accent-soft)); }
+.eye-btn { background:none; border:none; font-size:22px; cursor:pointer; }
+.eye-btn.off { filter:grayscale(1) opacity(.4); }
+.progress-bar {
+  width:calc(100% - 40px); max-width:440px; height:3px;
+  background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; margin:4px 0 12px;
+}
+.progress-fill {
+  height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-soft));
+  border-radius:2px; transition:width .3s;
+}
+.nav-row {
+  width:100%; max-width:480px; padding:0 20px 20px;
+  display:flex; justify-content:space-between;
+}
+.nav-btn {
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+  border-radius:12px; padding:10px 24px; color:var(--muted);
+  font-size:14px; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+}
+.footer { font-size:11px; color:rgba(255,255,255,.15); padding:0 0 24px; text-align:center; }
+.test-actions { display:flex; gap:16px; margin-top:8px; }
+.test-wrong {
+  background:rgba(233,69,96,.2); border:2px solid var(--accent);
+  border-radius:16px; padding:12px 28px; color:var(--accent);
+  font-size:16px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+}
+.test-correct {
+  background:rgba(0,210,211,.2); border:2px solid var(--success);
+  border-radius:16px; padding:12px 28px; color:var(--success);
+  font-size:16px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+}
+.result-page {
+  width:100%; max-width:480px; padding:60px 20px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:20px;
+}
+.result-emoji { font-size:48px; }
+.result-title { font-size:24px; font-weight:700; }
+.result-scores { display:flex; gap:30px; font-size:20px; font-weight:500; }
+.result-hint { font-size:14px; color:var(--muted); line-height:1.6; }
+.result-btns { display:flex; gap:12px; margin-top:10px; }
+.result-retry {
+  background:var(--accent); border:none; border-radius:12px;
+  padding:12px 24px; color:#fff; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+}
+.result-back {
+  background:var(--day-inactive); border:none; border-radius:12px;
+  padding:12px 24px; color:#fff; font-size:14px; font-weight:500;
+  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+}
+.back-link {
+  background:none; border:none; color:var(--muted); font-size:14px;
+  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+}
+.test-header {
+  width:100%; max-width:480px; padding:12px 20px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// === DATA ===
+const WORD_DATA = {
+  1: { title: "기본 인사·요일", words: [
+    {h:"おはよう",r:"ohayou",m:"[인사] 좋은 아침"},
+    {h:"こんにちは",r:"konnichiwa",m:"[인사] 안녕하세요 (낮)"},
+    {h:"こんばんは",r:"konbanwa",m:"[인사] 안녕하세요 (저녁)"},
+    {h:"ありがとう",r:"arigatou",m:"[인사] 감사합니다"},
+    {h:"すみません",r:"sumimasen",m:"[인사] 죄송합니다"},
+    {h:"さようなら",r:"sayounara",m:"[인사] 안녕히 가세요"},
+    {h:"おやすみなさい",r:"oyasuminasai",m:"[인사] 안녕히 주무세요"},
+    {h:"げつようび",r:"getsuyoubi",m:"[명] 월요일"},
+    {h:"かようび",r:"kayoubi",m:"[명] 화요일"},
+    {h:"すいようび",r:"suiyoubi",m:"[명] 수요일"},
+    {h:"もくようび",r:"mokuyoubi",m:"[명] 목요일"},
+    {h:"きんようび",r:"kinyoubi",m:"[명] 금요일"},
+    {h:"どようび",r:"doyoubi",m:"[명] 토요일"},
+    {h:"にちようび",r:"nichiyoubi",m:"[명] 일요일"},
+  ]},
+  2: { title: "숫자·시간", words: [
+    {h:"いち",r:"ichi",m:"[수] 1"},
+    {h:"に",r:"ni",m:"[수] 2"},
+    {h:"さん",r:"san",m:"[수] 3"},
+    {h:"し / よん",r:"shi / yon",m:"[수] 4"},
+    {h:"ご",r:"go",m:"[수] 5"},
+    {h:"ろく",r:"roku",m:"[수] 6"},
+    {h:"しち / なな",r:"shichi / nana",m:"[수] 7"},
+    {h:"はち",r:"hachi",m:"[수] 8"},
+    {h:"きゅう / く",r:"kyuu / ku",m:"[수] 9"},
+    {h:"じゅう",r:"juu",m:"[수] 10"},
+    {h:"ひゃく",r:"hyaku",m:"[수] 100"},
+    {h:"せん",r:"sen",m:"[수] 1000"},
+    {h:"いま",r:"ima",m:"[명] 지금"},
+    {h:"きょう",r:"kyou",m:"[명] 오늘"},
+    {h:"あした",r:"ashita",m:"[명] 내일"},
+    {h:"きのう",r:"kinou",m:"[명] 어제"},
+    {h:"あさ",r:"asa",m:"[명] 아침"},
+    {h:"ひる",r:"hiru",m:"[명] 낮/점심"},
+    {h:"よる",r:"yoru",m:"[명] 밤/저녁"},
+  ]},
+  3: { title: "기본 명사 (사람·장소)", words: [
+    {h:"わたし",r:"watashi",m:"[명] 나/저"},
+    {h:"あなた",r:"anata",m:"[명] 당신"},
+    {h:"ひと",r:"hito",m:"[명] 사람"},
+    {h:"ともだち",r:"tomodachi",m:"[명] 친구"},
+    {h:"かぞく",r:"kazoku",m:"[명] 가족"},
+    {h:"せんせい",r:"sensei",m:"[명] 선생님"},
+    {h:"がくせい",r:"gakusei",m:"[명] 학생"},
+    {h:"いえ",r:"ie",m:"[명] 집"},
+    {h:"がっこう",r:"gakkou",m:"[명] 학교"},
+    {h:"えき",r:"eki",m:"[명] 역"},
+    {h:"みせ",r:"mise",m:"[명] 가게"},
+    {h:"びょういん",r:"byouin",m:"[명] 병원"},
+    {h:"こうえん",r:"kouen",m:"[명] 공원"},
+    {h:"おかね",r:"okane",m:"[명] 돈"},
+    {h:"でんわ",r:"denwa",m:"[명] 전화"},
+  ]},
+  4: { title: "기본 동사", words: [
+    {h:"たべる",r:"taberu",m:"[동] 먹다"},
+    {h:"のむ",r:"nomu",m:"[동] 마시다"},
+    {h:"いく",r:"iku",m:"[동] 가다"},
+    {h:"くる",r:"kuru",m:"[동] 오다"},
+    {h:"みる",r:"miru",m:"[동] 보다"},
+    {h:"きく",r:"kiku",m:"[동] 듣다"},
+    {h:"はなす",r:"hanasu",m:"[동] 말하다"},
+    {h:"よむ",r:"yomu",m:"[동] 읽다"},
+    {h:"かく",r:"kaku",m:"[동] 쓰다"},
+    {h:"する",r:"suru",m:"[동] 하다"},
+    {h:"かう",r:"kau",m:"[동] 사다"},
+    {h:"わかる",r:"wakaru",m:"[동] 알다"},
+    {h:"あう",r:"au",m:"[동] 만나다"},
+    {h:"やすむ",r:"yasumu",m:"[동] 쉬다"},
+    {h:"おしえる",r:"oshieru",m:"[동] 가르치다"},
+  ]},
+  5: { title: "기본 형용사·부사", words: [
+    {h:"おおきい",r:"ookii",m:"[이형] 크다"},
+    {h:"ちいさい",r:"chiisai",m:"[이형] 작다"},
+    {h:"たかい",r:"takai",m:"[이형] 높다/비싸다"},
+    {h:"やすい",r:"yasui",m:"[이형] 싸다"},
+    {h:"おいしい",r:"oishii",m:"[이형] 맛있다"},
+    {h:"たのしい",r:"tanoshii",m:"[이형] 즐겁다"},
+    {h:"むずかしい",r:"muzukashii",m:"[이형] 어렵다"},
+    {h:"あたらしい",r:"atarashii",m:"[이형] 새롭다"},
+    {h:"すき",r:"suki",m:"[나형] 좋아하다"},
+    {h:"きらい",r:"kirai",m:"[나형] 싫어하다"},
+    {h:"げんき",r:"genki",m:"[나형] 건강하다"},
+    {h:"とても",r:"totemo",m:"[부] 매우"},
+    {h:"すこし",r:"sukoshi",m:"[부] 조금"},
+    {h:"たくさん",r:"takusan",m:"[부] 많이"},
+    {h:"まだ",r:"mada",m:"[부] 아직"},
+    {h:"もう",r:"mou",m:"[부] 이미/벌써"},
+  ]},
+};
+
+const DAYS = Object.keys(WORD_DATA).map(Number);
+
+// === STATE ===
+let state = {
+  day: 1, idx: 0, playing: false, playCount: 0,
+  showMeaning: true, speed: 1.0,
+  mode: "study", // study | test | result
+  testWords: [], testIdx: 0, testRevealed: false,
+  testScore: { correct: 0, wrong: 0 },
+  bookmarks: JSON.parse(localStorage.getItem("jp-bm") || "{}"),
+};
+
+let autoTimer = null;
+
+function saveBookmarks() { localStorage.setItem("jp-bm", JSON.stringify(state.bookmarks)); }
+function getWords() { return WORD_DATA[state.day]?.words || []; }
+function getCurrent() {
+  if (state.mode === "test") return state.testWords[state.testIdx];
+  return getWords()[state.idx];
+}
+function bmKey(w, day) { return (day||state.day) + "-" + w.h; }
+function isBm(w) { return w ? !!state.bookmarks[bmKey(w)] : false; }
+function bmCount() { return Object.keys(state.bookmarks).length; }
+
+// === TTS ===
+function speak(text, cb) {
+  if (!window.speechSynthesis) { if(cb) cb(); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ja-JP";
+  u.rate = state.speed;
+  // Try to find a Japanese voice
+  const voices = window.speechSynthesis.getVoices();
+  const jpVoice = voices.find(v => v.lang.startsWith("ja"));
+  if (jpVoice) u.voice = jpVoice;
+  u.onend = () => { if(cb) cb(); };
+  u.onerror = () => { if(cb) cb(); };
+  window.speechSynthesis.speak(u);
+}
+
+// Preload voices
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+// === AUTO PLAY ===
+function stopAuto() {
+  state.playing = false; state.playCount = 0;
+  window.speechSynthesis?.cancel();
+  if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+}
+
+function autoPlay(count) {
+  if (!state.playing) return;
+  const words = getWords();
+  if (count >= 3) {
+    state.playCount = 0;
+    autoTimer = setTimeout(() => {
+      if (state.idx < words.length - 1) {
+        state.idx++;
+        render();
+        autoPlay(0);
+      } else { stopAuto(); render(); }
+    }, 600);
+    return;
+  }
+  state.playCount = count + 1;
+  render();
+  const w = words[state.idx];
+  if (!w) { stopAuto(); render(); return; }
+  // Speak only the first part before " / " for words like し / よん
+  const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
+  speak(text, () => {
+    if (!state.playing) return;
+    autoTimer = setTimeout(() => autoPlay(count + 1), 800);
+  });
+}
+
+function togglePlay() {
+  if (state.playing) { stopAuto(); }
+  else { state.playing = true; autoPlay(0); }
+  render();
+}
+
+// === TEST ===
+function startTest() {
+  const all = Object.values(state.bookmarks);
+  if (all.length === 0) { alert("체크된 단어가 없어요! ☆를 눌러 못 외운 단어를 체크해주세요."); return; }
+  let pool = [];
+  all.forEach(w => { for (let i = 0; i < Math.max(1, w.cnt||1); i++) pool.push(w); });
+  const shuffled = []; const seen = new Set();
+  while (pool.length > 0 && shuffled.length < all.length) {
+    const i = Math.floor(Math.random() * pool.length);
+    const item = pool[i];
+    if (!seen.has(item.h)) { seen.add(item.h); shuffled.push(item); }
+    pool.splice(i, 1);
+  }
+  state.mode = "test"; state.testWords = shuffled; state.testIdx = 0;
+  state.testRevealed = false; state.testScore = { correct:0, wrong:0 };
+  stopAuto(); render();
+}
+
+function testAnswer(correct) {
+  const w = state.testWords[state.testIdx];
+  const key = bmKey(w, w.day);
+  if (correct) {
+    state.testScore.correct++;
+    if (state.bookmarks[key]) state.bookmarks[key].cnt = Math.max(1, (state.bookmarks[key].cnt||1) - 1);
+  } else {
+    state.testScore.wrong++;
+    if (state.bookmarks[key]) state.bookmarks[key].cnt = (state.bookmarks[key].cnt||1) + 1;
+  }
+  saveBookmarks();
+  if (state.testIdx < state.testWords.length - 1) {
+    state.testIdx++; state.testRevealed = false;
+  } else { state.mode = "result"; }
+  render();
+}
+
+// === SWIPE ===
+let touchSX = 0, touchEX = 0;
+function onTS(e) { touchSX = e.touches[0].clientX; }
+function onTM(e) { touchEX = e.touches[0].clientX; }
+function onTE() {
+  const d = touchSX - touchEX;
+  if (Math.abs(d) > 60) { d > 0 ? goNext() : goPrev(); }
+}
+function goNext() {
+  if (state.mode === "test") {
+    if (state.testIdx < state.testWords.length - 1) { state.testIdx++; state.testRevealed = false; render(); }
+    return;
+  }
+  const words = getWords();
+  if (state.idx < words.length - 1) { stopAuto(); state.idx++; render(); }
+}
+function goPrev() {
+  if (state.mode === "test") {
+    if (state.testIdx > 0) { state.testIdx--; state.testRevealed = false; render(); }
+    return;
+  }
+  if (state.idx > 0) { stopAuto(); state.idx--; render(); }
+}
+
+// === KEYBOARD ===
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") goNext();
+  if (e.key === "ArrowLeft") goPrev();
+  if (e.key === " ") { e.preventDefault(); togglePlay(); }
+});
+
+// === RENDER ===
+function render() {
+  const app = document.getElementById("app");
+  const w = getCurrent();
+  const words = getWords();
+
+  let html = "";
+
+  // Header
+  html += `<div class="header">
+    <div><span class="logo">日本語</span><span class="logo-sub">단어장</span></div>
+    <button class="test-btn ${bmCount()===0?'disabled':''}" onclick="startTest()">★ 테스트 (${bmCount()})</button>
+  </div>`;
+
+  if (state.mode === "study") {
+    // Days
+    html += `<div class="days">${DAYS.map(d =>
+      `<button class="day-btn ${d===state.day?'active':''}" onclick="selectDay(${d})">DAY ${d}</button>`
+    ).join("")}</div>`;
+    // Info
+    html += `<div class="info">${WORD_DATA[state.day].title} · ${state.idx+1}/${words.length}</div>`;
+  }
+
+  if (state.mode === "test") {
+    html += `<div class="test-header">
+      <button class="back-link" onclick="backToStudy()">← 돌아가기</button>
+      <span style="font-size:13px;color:var(--muted)">${state.testIdx+1}/${state.testWords.length} · ✓${state.testScore.correct} ✗${state.testScore.wrong}</span>
+    </div>`;
+  }
+
+  if (state.mode === "result") {
+    html += `<div class="result-page">
+      <div class="result-emoji">🎌</div>
+      <div class="result-title">테스트 완료!</div>
+      <div class="result-scores">
+        <span style="color:var(--success)">✓ ${state.testScore.correct}</span>
+        <span style="color:var(--accent)">✗ ${state.testScore.wrong}</span>
+      </div>
+      <div class="result-hint">틀린 단어는 가중치가 올라가서<br>다음 테스트에서 더 자주 나와요</div>
+      <div class="result-btns">
+        <button class="result-retry" onclick="startTest()">다시 테스트</button>
+        <button class="result-back" onclick="backToStudy()">학습으로</button>
+      </div>
+    </div>`;
+    app.innerHTML = html;
+    return;
+  }
+
+  // Card
+  if (w) {
+    const isSmall = w.h.length > 6;
+    const bmActive = (state.mode === "study") ? isBm(w) : false;
+    const meaningHidden = state.mode === "test" ? !state.testRevealed : !state.showMeaning;
+
+    html += `<div class="card-area" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE()">`;
+
+    // Bookmark (study only)
+    if (state.mode === "study") {
+      html += `<button class="bookmark-btn ${bmActive?'active':''}" onclick="toggleBm()">
+        ${bmActive ? "★" : "☆"}
+      </button>`;
+    }
+
+    // Play dots
+    if (state.playing && state.mode === "study") {
+      html += `<div class="play-dots">
+        ${[0,1,2].map(i => `<div class="dot ${i<state.playCount?'filled':''}"></div>`).join("")}
+      </div>`;
+    }
+
+    // Hiragana
+    html += `<div class="hiragana ${isSmall?'small':''}">${w.h}</div>`;
+    // Romaji
+    html += `<div class="romaji">${w.r}</div>`;
+    // Meaning
+    if (state.mode === "test") {
+      html += `<div class="meaning ${meaningHidden?'hidden':''}" onclick="revealTest()">
+        ${state.testRevealed ? w.m : "탭하여 뜻 확인"}
+      </div>`;
+    } else {
+      html += `<div class="meaning ${meaningHidden?'hidden':''}" onclick="toggleMeaning()">
+        ${w.m}
+      </div>`;
+    }
+    // Speaker
+    html += `<button class="speak-btn" onclick="speakOnce()">🔊</button>`;
+
+    // Test buttons
+    if (state.mode === "test" && state.testRevealed) {
+      html += `<div class="test-actions">
+        <button class="test-wrong" onclick="testAnswer(false)">✗ 모르겠어</button>
+        <button class="test-correct" onclick="testAnswer(true)">✓ 알아!</button>
+      </div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  // Controls (study only)
+  if (state.mode === "study") {
+    const speeds = [0.7, 0.85, 1.0, 1.2, 1.5];
+    html += `<div class="controls">
+      <div class="ctrl-col">
+        <button class="speed-btn" onclick="cycleSpeed()">${state.speed}x</button>
+        <span class="speed-label">음성 배속</span>
+      </div>
+      <button class="play-btn ${state.playing?'playing':''}" onclick="togglePlay()">
+        ${state.playing ? "⏸" : "▶"}
+      </button>
+      <div class="ctrl-col">
+        <button class="eye-btn ${state.showMeaning?'':'off'}" onclick="toggleMeaning()">👁</button>
+        <span class="speed-label">뜻 ${state.showMeaning?'보기':'숨김'}</span>
+      </div>
+    </div>`;
+
+    // Progress
+    const pct = ((state.idx + 1) / words.length * 100);
+    html += `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+  }
+
+  // Nav
+  if (state.mode === "study" || state.mode === "test") {
+    html += `<div class="nav-row">
+      <button class="nav-btn" onclick="goPrev()">← 이전</button>
+      <button class="nav-btn" onclick="goNext()">다음 →</button>
+    </div>`;
+  }
+
+  html += `<div class="footer">← 스와이프로 이동 →  ·  ☆ 못 외운 단어 체크</div>`;
+
+  app.innerHTML = html;
+}
+
+// === ACTIONS ===
+function selectDay(d) { stopAuto(); state.day = d; state.idx = 0; state.mode = "study"; render(); }
+function backToStudy() { stopAuto(); state.mode = "study"; render(); }
+function toggleMeaning() { state.showMeaning = !state.showMeaning; render(); }
+function revealTest() { state.testRevealed = true; render(); }
+function speakOnce() {
+  const w = getCurrent();
+  if (w) {
+    const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
+    speak(text);
+  }
+}
+function toggleBm() {
+  const w = getCurrent(); if (!w) return;
+  const key = bmKey(w);
+  if (state.bookmarks[key]) { delete state.bookmarks[key]; }
+  else { state.bookmarks[key] = { day:state.day, h:w.h, r:w.r, m:w.m, cnt:1 }; }
+  saveBookmarks(); render();
+}
+function cycleSpeed() {
+  const speeds = [0.7, 0.85, 1.0, 1.2, 1.5];
+  const i = speeds.indexOf(state.speed);
+  state.speed = speeds[(i + 1) % speeds.length];
+  render();
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
