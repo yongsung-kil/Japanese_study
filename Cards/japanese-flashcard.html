@@ -616,7 +616,7 @@ function render() {
     </div>`;
   }
 
-  html += `<div class="footer">← 스와이프로 이동 →  ·  ☆ 못 외운 단어 체크</div>`;
+  html += `<div class="footer">최종 업데이트: ${new Date().toLocaleString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>`;
 
   app.innerHTML = html;
 
