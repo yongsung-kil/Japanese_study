@@ -13,7 +13,7 @@
 ## 새 작업 추가 (여기에만 작성)
 
 (현재 새 작업 없음)
-
+https://yongsung-kil.github.io/Japanese_study/ 404 not found나옴
 ---
 
 ## Claude 마지막 확인
@@ -24,15 +24,6 @@
 ---
 
 ## 진행 중인 작업
-
----
-
-### [ ] GitHub Pages 배포
-> 등록일: 2026-02-12
-
-**내용:**
-- japanese-flashcard.html을 index.html로 이름 변경하여 업로드
-- GitHub Pages에서 바로 접속 가능하도록 설정
 
 ---
 
