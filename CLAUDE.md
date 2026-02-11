@@ -89,7 +89,7 @@ TDLs/
   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
   ```
 - **Type 종류**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
-- **중요**: Push는 사용자가 직접 수행 (자동 push 안 함)
+- **Push**: 커밋 후 즉시 자동 push 수행 (확인 없이 바로 실행)
 
 ## 참고 문서
 
