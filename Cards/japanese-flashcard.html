@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>日本語 단어장</title>
-<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -15,17 +15,23 @@
   --text: #eaeaea; --muted: #8892b0; --success: #00d2d3;
   --day-active: #e94560; --day-inactive: #233554;
 }
+html { height:100vh; height:100dvh; overflow:hidden; }
 body {
-  min-height:100vh; background:linear-gradient(135deg,var(--bg) 0%,#16213e 50%,#0f3460 100%);
+  height:100vh; height:100dvh; background:linear-gradient(135deg,var(--bg) 0%,#16213e 50%,#0f3460 100%);
   font-family:'Noto Sans KR',sans-serif; color:var(--text);
   display:flex; flex-direction:column; align-items:center;
-  overflow-x:hidden; user-select:none;
+  overflow:hidden; user-select:none;
+}
+#app {
+  width:100%; max-width:480px; height:100%;
+  display:flex; flex-direction:column; align-items:center;
+  overflow:hidden;
 }
 .header {
-  width:100%; max-width:480px; padding:16px 20px 8px;
-  display:flex; justify-content:space-between; align-items:center;
+  width:100%; padding:10px 16px 4px;
+  display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
 }
-.logo { font-size:22px; font-weight:900; color:var(--accent); font-family:'Zen Maru Gothic',sans-serif; }
+.logo { font-size:22px; font-weight:900; color:var(--accent); font-family:'Noto Sans JP',sans-serif; }
 .logo-sub { font-size:13px; color:var(--muted); font-weight:300; margin-left:8px; }
 .test-btn {
   background:var(--accent); border:none; border-radius:20px; padding:6px 14px;
@@ -34,13 +40,13 @@ body {
 }
 .test-btn.disabled { background:var(--day-inactive); cursor:default; }
 .days {
-  width:100%; max-width:480px; padding:8px 20px;
-  display:flex; gap:8px; overflow-x:auto; scrollbar-width:none;
+  width:100%; padding:4px 16px;
+  display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; flex-shrink:0;
 }
 .days::-webkit-scrollbar { display:none; }
 .day-btn {
-  flex:0 0 auto; border-radius:12px; padding:8px 14px;
-  font-size:12px; cursor:pointer; transition:all .3s;
+  flex:0 0 auto; border-radius:10px; padding:6px 12px;
+  font-size:11px; cursor:pointer; transition:all .3s;
   font-family:'Noto Sans KR',sans-serif; border:2px solid transparent;
   background:var(--day-inactive); color:var(--muted); font-weight:400;
 }
@@ -49,14 +55,14 @@ body {
   border-color:var(--accent); box-shadow:0 0 15px var(--accent-glow);
 }
 .info {
-  width:100%; max-width:480px; padding:4px 20px 8px;
-  font-size:13px; color:var(--muted); font-weight:300;
+  width:100%; padding:2px 16px 4px;
+  font-size:12px; color:var(--muted); font-weight:300; flex-shrink:0;
 }
 .card-area {
-  width:calc(100% - 40px); max-width:440px; min-height:380px;
+  width:calc(100% - 32px); max-width:440px; flex:1; min-height:0;
   background:linear-gradient(145deg,var(--bg-inner),var(--bg-card));
-  border-radius:24px; margin:8px 0; padding:40px 24px 32px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  border-radius:20px; margin:4px 0; padding:24px 20px 16px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
   box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 40px var(--accent-glow);
   border:1px solid rgba(233,69,96,.15); position:relative; transition:transform .2s;
 }
@@ -66,18 +72,19 @@ body {
 }
 .bookmark-btn.active { color:var(--accent); filter:drop-shadow(0 0 6px var(--accent-glow)); }
 .play-dots {
-  position:absolute; top:16px; left:16px; display:flex; gap:4px;
+  position:absolute; top:58px; left:16px; display:flex; gap:4px;
 }
 .dot {
   width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.15); transition:background .3s;
 }
 .dot.filled { background:var(--accent); }
 .hiragana {
-  font-size:64px; font-weight:900; color:#fff;
-  font-family:'Zen Maru Gothic',sans-serif; letter-spacing:4px;
+  font-size:72px; font-weight:700; color:#fff;
+  font-family:'Noto Sans JP',sans-serif; letter-spacing:4px;
   text-shadow:0 0 30px var(--accent-glow); line-height:1.3; text-align:center;
+  flex:1; display:flex; align-items:center; justify-content:center;
 }
-.hiragana.small { font-size:48px; }
+.hiragana.small { font-size:54px; }
 .romaji { font-size:16px; color:var(--muted); font-weight:300; letter-spacing:2px; }
 .meaning {
   font-size:18px; font-weight:500; color:var(--text); border-radius:8px;
@@ -85,14 +92,18 @@ body {
 }
 .meaning.hidden { color:transparent; background:rgba(255,255,255,.08); }
 .speak-btn {
+  position:absolute; top:16px; left:16px;
   background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
-  border-radius:50%; width:48px; height:48px;
+  border-radius:50%; width:38px; height:38px;
   display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-size:20px; margin-top:4px; transition:all .2s;
+  cursor:pointer; font-size:16px; transition:all .2s;
+}
+.card-bottom {
+  flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px;
 }
 .controls {
-  width:100%; max-width:480px; padding:16px 20px;
-  display:flex; justify-content:space-between; align-items:center;
+  width:100%; padding:8px 16px;
+  display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
 }
 .ctrl-col { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .speed-btn {
@@ -101,9 +112,9 @@ body {
 }
 .speed-label { font-size:10px; color:var(--muted); }
 .play-btn {
-  width:64px; height:64px; border-radius:50%; border:none;
+  width:56px; height:56px; border-radius:50%; border:none;
   display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-size:24px; color:#fff; transition:all .2s;
+  cursor:pointer; font-size:22px; color:#fff; transition:all .2s;
   background:linear-gradient(135deg,var(--accent),#c0392b);
   box-shadow:0 4px 25px var(--accent-glow);
 }
@@ -111,23 +122,23 @@ body {
 .eye-btn { background:none; border:none; font-size:22px; cursor:pointer; }
 .eye-btn.off { filter:grayscale(1) opacity(.4); }
 .progress-bar {
-  width:calc(100% - 40px); max-width:440px; height:3px;
-  background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; margin:4px 0 12px;
+  width:calc(100% - 32px); max-width:440px; height:3px;
+  background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; margin:2px 0 4px; flex-shrink:0;
 }
 .progress-fill {
   height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-soft));
   border-radius:2px; transition:width .3s;
 }
 .nav-row {
-  width:100%; max-width:480px; padding:0 20px 20px;
-  display:flex; justify-content:space-between;
+  width:100%; padding:0 16px 8px;
+  display:flex; justify-content:space-between; flex-shrink:0;
 }
 .nav-btn {
   background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
-  border-radius:12px; padding:10px 24px; color:var(--muted);
-  font-size:14px; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
+  border-radius:10px; padding:8px 20px; color:var(--muted);
+  font-size:13px; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
 }
-.footer { font-size:11px; color:rgba(255,255,255,.15); padding:0 0 24px; text-align:center; }
+.footer { font-size:10px; color:rgba(255,255,255,.15); padding:0 0 8px; text-align:center; flex-shrink:0; }
 .test-actions { display:flex; gap:16px; margin-top:8px; }
 .test-wrong {
   background:rgba(233,69,96,.2); border:2px solid var(--accent);
@@ -163,7 +174,7 @@ body {
   cursor:pointer; font-family:'Noto Sans KR',sans-serif;
 }
 .test-header {
-  width:100%; max-width:480px; padding:12px 20px;
+  width:100%; padding:8px 16px; flex-shrink:0;
   display:flex; justify-content:space-between; align-items:center;
 }
 </style>
@@ -487,11 +498,15 @@ function render() {
       </div>`;
     }
 
-    // Hiragana
+    // Speaker (top-left)
+    html += `<button class="speak-btn" onclick="speakOnce()">🔊</button>`;
+
+    // Hiragana (center, flex:1)
     html += `<div class="hiragana ${isSmall?'small':''}">${w.h}</div>`;
-    // Romaji
+
+    // Bottom area (romaji + meaning + test buttons)
+    html += `<div class="card-bottom">`;
     html += `<div class="romaji">${w.r}</div>`;
-    // Meaning
     if (state.mode === "test") {
       html += `<div class="meaning ${meaningHidden?'hidden':''}" onclick="revealTest()">
         ${state.testRevealed ? w.m : "탭하여 뜻 확인"}
@@ -501,16 +516,13 @@ function render() {
         ${w.m}
       </div>`;
     }
-    // Speaker
-    html += `<button class="speak-btn" onclick="speakOnce()">🔊</button>`;
-
-    // Test buttons
     if (state.mode === "test" && state.testRevealed) {
       html += `<div class="test-actions">
         <button class="test-wrong" onclick="testAnswer(false)">✗ 모르겠어</button>
         <button class="test-correct" onclick="testAnswer(true)">✓ 알아!</button>
       </div>`;
     }
+    html += `</div>`;
 
     html += `</div>`;
   }
