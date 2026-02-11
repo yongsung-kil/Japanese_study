@@ -341,7 +341,7 @@ function autoPlay(count) {
         render();
         autoPlay(0);
       } else { stopAuto(); render(); }
-    }, 600);
+    }, 300);
     return;
   }
   state.playCount = count + 1;
@@ -352,7 +352,7 @@ function autoPlay(count) {
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
   speak(text, () => {
     if (!state.playing) return;
-    autoTimer = setTimeout(() => autoPlay(count + 1), 800);
+    autoTimer = setTimeout(() => autoPlay(count + 1), 300);
   });
 }
 
@@ -419,14 +419,24 @@ function goNext() {
     return;
   }
   const words = getWords();
-  if (state.idx < words.length - 1) { stopAuto(); state.idx++; render(); }
+  if (state.idx < words.length - 1) {
+    const wasPlaying = state.playing;
+    if (wasPlaying) { window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    state.idx++; state.playCount = 0; render();
+    if (wasPlaying) autoPlay(0);
+  }
 }
 function goPrev() {
   if (state.mode === "test") {
     if (state.testIdx > 0) { state.testIdx--; state.testRevealed = false; render(); }
     return;
   }
-  if (state.idx > 0) { stopAuto(); state.idx--; render(); }
+  if (state.idx > 0) {
+    const wasPlaying = state.playing;
+    if (wasPlaying) { window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    state.idx--; state.playCount = 0; render();
+    if (wasPlaying) autoPlay(0);
+  }
 }
 
 // === KEYBOARD ===
