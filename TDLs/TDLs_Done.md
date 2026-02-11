@@ -10,6 +10,15 @@
 
 ## ✅ 완료된 작업 - 2026-02-12
 
+### ✅ PWA manifest 추가
+> 완료: 2026-02-12 · `5cd7071`
+
+- ✅ manifest.json (standalone 모드, 테마색)
+- ✅ icon.svg 앱 아이콘
+- ✅ Service Worker 없이 업데이트 즉시 반영 유지
+
+---
+
 ### ✅ 1차 HTML 버전 완성
 
 - ✅ 카드 플래시 + TTS 3회 반복 후 자동 넘김
