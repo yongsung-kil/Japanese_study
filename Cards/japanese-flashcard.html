@@ -87,9 +87,9 @@ body {
 }
 .bookmark-btn {
   position:absolute; top:16px; right:16px; background:none; border:none;
-  font-size:24px; cursor:pointer; color:var(--muted); transition:all .2s;
+  font-size:24px; cursor:pointer; color:var(--muted); transition:all .2s; z-index:10;
 }
-.bookmark-btn.active { color:var(--accent); filter:drop-shadow(0 0 6px var(--accent-glow)); }
+.bookmark-btn.active { color:var(--success); filter:drop-shadow(0 0 6px rgba(0,210,211,.4)); }
 .play-dots {
   position:absolute; top:58px; left:16px; display:flex; gap:4px;
 }
@@ -274,6 +274,9 @@ body {
 // === DATA ===
 const DAYS = Object.keys(WORD_DATA).map(Number);
 
+// 기존 jp-bm(못 외운 단어) 데이터 정리 → 새 시스템은 jp-learned(외운 단어)
+if (localStorage.getItem("jp-bm")) localStorage.removeItem("jp-bm");
+
 // === STATE ===
 let state = {
   day: 1, idx: 0, playing: false, playCount: 0,
@@ -282,13 +285,13 @@ let state = {
   mode: "menu", // menu | study | test | result
   testWords: [], testIdx: 0, testRevealed: false,
   testScore: { correct: 0, wrong: 0 },
-  bookmarks: JSON.parse(localStorage.getItem("jp-bm") || "{}"),
+  bookmarks: JSON.parse(localStorage.getItem("jp-learned") || "{}"),
 };
 
 let autoTimer = null;
 let playId = 0;
 
-function saveBookmarks() { localStorage.setItem("jp-bm", JSON.stringify(state.bookmarks)); }
+function saveBookmarks() { localStorage.setItem("jp-learned", JSON.stringify(state.bookmarks)); }
 function getWords() { return WORD_DATA[state.day]?.words || []; }
 function getCurrent() {
   if (state.mode === "test") return state.testWords[state.testIdx];
@@ -297,6 +300,11 @@ function getCurrent() {
 function bmKey(w, day) { return (day||state.day) + "-" + w.h; }
 function isBm(w) { return w ? !!state.bookmarks[bmKey(w)] : false; }
 function bmCount() { return Object.keys(state.bookmarks).length; }
+function unlearnedCount() {
+  let c = 0;
+  for (const d of DAYS) WORD_DATA[d].words.forEach(w => { if (!state.bookmarks[d+"-"+w.h]) c++; });
+  return c;
+}
 
 // === TTS ===
 function speak(text, cb) {
@@ -362,18 +370,20 @@ function togglePlay() {
 
 // === TEST ===
 function startTest() {
-  const all = Object.values(state.bookmarks);
-  if (all.length === 0) { alert("체크된 단어가 없어요! ☆를 눌러 못 외운 단어를 체크해주세요."); return; }
-  let pool = [];
-  all.forEach(w => { for (let i = 0; i < Math.max(1, w.cnt||1); i++) pool.push(w); });
-  const shuffled = []; const seen = new Set();
-  while (pool.length > 0 && shuffled.length < all.length) {
-    const i = Math.floor(Math.random() * pool.length);
-    const item = pool[i];
-    if (!seen.has(item.h)) { seen.add(item.h); shuffled.push(item); }
-    pool.splice(i, 1);
+  // 아직 외우지 않은 단어(learned에 없는 단어)를 테스트
+  const all = [];
+  for (const d of DAYS) {
+    WORD_DATA[d].words.forEach(w => {
+      if (!state.bookmarks[d+"-"+w.h]) all.push({ day:d, h:w.h, r:w.r, m:w.m, cnt:1 });
+    });
   }
-  state.mode = "test"; state.testWords = shuffled; state.testIdx = 0;
+  if (all.length === 0) { alert("모든 단어를 외웠어요! 🎉"); return; }
+  // 랜덤 셔플
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  state.mode = "test"; state.testWords = all; state.testIdx = 0;
   state.testRevealed = false; state.testScore = { correct:0, wrong:0 };
   stopAuto(); render();
 }
@@ -383,10 +393,12 @@ function testAnswer(correct) {
   const key = bmKey(w, w.day);
   if (correct) {
     state.testScore.correct++;
-    if (state.bookmarks[key]) state.bookmarks[key].cnt = Math.max(1, (state.bookmarks[key].cnt||1) - 1);
+    // 맞힌 단어는 learned에 추가
+    state.bookmarks[key] = { day:w.day, h:w.h, r:w.r, m:w.m, cnt:1 };
   } else {
     state.testScore.wrong++;
-    if (state.bookmarks[key]) state.bookmarks[key].cnt = (state.bookmarks[key].cnt||1) + 1;
+    // 틀린 단어는 learned에서 제거 (안 외운 상태 유지)
+    delete state.bookmarks[key];
   }
   saveBookmarks();
   if (state.testIdx < state.testWords.length - 1) {
@@ -403,9 +415,12 @@ function onTE(e) {
   const d = touchSX - touchEX;
   if (Math.abs(d) > 60) { d > 0 ? goNext() : goPrev(); return; }
   // Tap: 스와이프 아닌 경우 카드 좌/우 영역 탭으로 이동
+  // 상단 70px은 체크버튼/스피커 영역이므로 탭 네비게이션 제외
   if (!touchMoved) {
     const card = e.currentTarget;
     const rect = card.getBoundingClientRect();
+    const y = touchSY - rect.top;
+    if (y < 70) return;
     const x = touchSX - rect.left;
     if (x < rect.width * 0.35) goPrev();
     else if (x > rect.width * 0.65) goNext();
@@ -480,9 +495,9 @@ function render() {
     for (const d of DAYS) {
       const data = WORD_DATA[d];
       const total = data.words.length;
-      const bmCnt = data.words.filter(w => state.bookmarks[d + "-" + w.h]).length;
-      const badgeClass = bmCnt === 0 ? "menu-badge clean" : "menu-badge";
-      const badgeText = bmCnt === 0 ? "완료" : "★ " + bmCnt + "/" + total;
+      const learnedCnt = data.words.filter(w => state.bookmarks[d + "-" + w.h]).length;
+      const badgeClass = learnedCnt === total ? "menu-badge clean" : "menu-badge";
+      const badgeText = learnedCnt === total ? "완료" : "✓ " + learnedCnt + "/" + total;
       html += `<div class="menu-item" onclick="openDay(${d})">
         <div class="menu-item-left">
           <div class="menu-day">DAY ${d}</div>
@@ -506,7 +521,7 @@ function render() {
       <span class="logo">日本語</span><span class="logo-sub">단어장</span>
     </div>
     <div>
-      <button class="test-btn ${bmCount()===0?'disabled':''}" onclick="startTest()">★ 테스트 (${bmCount()})</button>
+      <button class="test-btn ${unlearnedCount()===0?'disabled':''}" onclick="startTest()">테스트 (${unlearnedCount()})</button>
       <button class="refresh-btn" onclick="doRefresh()">↻</button>
     </div>
   </div>`;
@@ -558,7 +573,7 @@ function render() {
     // Bookmark (study only)
     if (state.mode === "study") {
       html += `<button class="bookmark-btn ${bmActive?'active':''}" onclick="toggleBm()">
-        ${bmActive ? "★" : "☆"}
+        ${bmActive ? "✓" : "○"}
       </button>`;
     }
 
