@@ -301,6 +301,7 @@ let state = {
   day: 1, idx: 0, playing: false, playCount: 0,
   showMeaning: true, speed: 1.0, showSettings: false, slideDir: "",
   repeatDelay: Number(localStorage.getItem("jp-repeat-delay")) || 2400,
+  repeatCount: Number(localStorage.getItem("jp-repeat-count")) || 3,
   catIdx: 0, // 현재 선택된 카테고리
   mode: "categories", // categories | menu | study | test | result
   testWords: [], testIdx: 0, testRevealed: false,
@@ -359,7 +360,7 @@ function autoPlay(count) {
   const myId = playId;
   if (!state.playing) return;
   const words = getWords();
-  if (count >= 3) {
+  if (count >= state.repeatCount) {
     state.playCount = 0;
     autoTimer = setTimeout(() => {
       if (playId !== myId) return;
@@ -638,7 +639,7 @@ function render() {
     // Play dots
     if (state.playing && state.mode === "study") {
       html += `<div class="play-dots">
-        ${[0,1,2].map(i => `<div class="dot ${i<state.playCount?'filled':''}"></div>`).join("")}
+        ${Array.from({length:state.repeatCount},(_,i) => `<div class="dot ${i<state.playCount?'filled':''}"></div>`).join("")}
       </div>`;
     }
 
@@ -719,6 +720,15 @@ function render() {
           <button class="settings-close" onclick="toggleSettings()">✕</button>
         </div>
         <div class="settings-row">
+          <span class="settings-label">반복 횟수</span>
+          <div class="settings-value">
+            <input class="settings-input" type="number" min="1" max="10" step="1"
+              value="${state.repeatCount}"
+              onchange="updateRepeatCount(this.value)">
+            <span class="settings-unit">회</span>
+          </div>
+        </div>
+        <div class="settings-row">
           <span class="settings-label">반복 간격</span>
           <div class="settings-value">
             <input class="settings-input" type="number" min="0" step="0.1"
@@ -744,6 +754,11 @@ function backToStudy() { stopAuto(); state.mode = "study"; render(); }
 function toggleMeaning() { state.showMeaning = !state.showMeaning; render(); }
 function toggleSettings() { state.showSettings = !state.showSettings; render(); }
 function closeSettings(e) { if (e.target === e.currentTarget) { state.showSettings = false; render(); } }
+function updateRepeatCount(val) {
+  const n = Math.max(1, Math.min(10, parseInt(val) || 3));
+  state.repeatCount = n;
+  localStorage.setItem("jp-repeat-count", n);
+}
 function updateRepeatDelay(val) {
   const ms = Math.max(0, Math.round(parseFloat(val) * 1000));
   state.repeatDelay = ms;
