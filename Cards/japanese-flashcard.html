@@ -490,35 +490,29 @@ document.addEventListener("keydown", e => {
   if (e.key === " ") { e.preventDefault(); togglePlay(); }
 });
 
-// === PULL TO REFRESH ===
+// === PULL TO REFRESH (카드 밖 영역에서만) ===
 (function() {
   const ptrEl = document.getElementById("ptr-el");
   const threshold = 80;
-  let ptrStartY = 0, ptrStartX = 0, ptrDist = 0, ptrActive = false, ptrLocked = false;
+  let ptrStartY = 0, ptrDist = 0, ptrActive = false;
   document.addEventListener("touchstart", e => {
+    if (e.target.closest(".card-area")) return;
     ptrStartY = e.touches[0].clientY;
-    ptrStartX = e.touches[0].clientX;
     ptrDist = 0;
     ptrActive = true;
-    ptrLocked = false;
   }, { passive: true });
   document.addEventListener("touchmove", e => {
     if (!ptrActive) return;
-    const dy = e.touches[0].clientY - ptrStartY;
-    const dx = Math.abs(e.touches[0].clientX - ptrStartX);
-    // 가로 이동이 크면 스와이프로 판단, 새로고침 비활성화
-    if (!ptrLocked && dx > 15) { ptrActive = false; return; }
-    if (dy > 10) ptrLocked = true; // 세로 방향 확정
-    if (ptrLocked && dy > 0) {
-      ptrDist = dy;
-      const h = Math.min(dy * 0.4, 50);
+    ptrDist = e.touches[0].clientY - ptrStartY;
+    if (ptrDist > 0) {
+      const h = Math.min(ptrDist * 0.4, 50);
       ptrEl.className = "ptr-indicator pulling";
       ptrEl.style.height = h + "px";
-      ptrEl.textContent = dy > threshold ? "놓으면 새로고침" : "↓ 당겨서 새로고침";
+      ptrEl.textContent = ptrDist > threshold ? "놓으면 새로고침" : "↓ 당겨서 새로고침";
     }
   }, { passive: true });
   document.addEventListener("touchend", () => {
-    if (!ptrActive && !ptrLocked) { ptrDist = 0; return; }
+    if (!ptrActive) return;
     ptrActive = false;
     if (ptrDist > threshold) {
       ptrEl.className = "ptr-indicator refreshing";
@@ -531,7 +525,6 @@ document.addEventListener("keydown", e => {
       ptrEl.textContent = "";
     }
     ptrDist = 0;
-    ptrLocked = false;
   });
 })();
 
