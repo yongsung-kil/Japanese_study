@@ -212,6 +212,7 @@ body {
 <body>
 
 <div id="app"></div>
+<div id="settings-root"></div>
 
 <script>
 // === DATA ===
@@ -614,9 +615,12 @@ function render() {
 
   html += `<div class="footer">← 스와이프로 이동 →  ·  ☆ 못 외운 단어 체크</div>`;
 
-  // 설정 패널
+  app.innerHTML = html;
+
+  // 설정 패널 (app 밖에 렌더링)
+  const sr = document.getElementById("settings-root");
   if (state.showSettings) {
-    html += `<div class="settings-overlay" onclick="closeSettings(event)">
+    sr.innerHTML = `<div class="settings-overlay" onclick="closeSettings(event)">
       <div class="settings-panel" onclick="event.stopPropagation()">
         <div class="settings-title">
           설정
@@ -633,9 +637,9 @@ function render() {
         </div>
       </div>
     </div>`;
+  } else {
+    sr.innerHTML = "";
   }
-
-  app.innerHTML = html;
 }
 
 // === ACTIONS ===
