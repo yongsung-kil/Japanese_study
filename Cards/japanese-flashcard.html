@@ -484,7 +484,7 @@ function doRefresh() { location.reload(); }
 
 // === 최종 업데이트 시간 (GitHub API에서 자동 조회) ===
 let LAST_UPDATED = "";
-fetch("https://api.github.com/repos/yongsung-kil/Japanese_study/commits?per_page=1&path=Cards/words.js")
+fetch("https://api.github.com/repos/yongsung-kil/Japanese_study/commits?per_page=1&path=Cards")
   .then(r => r.json())
   .then(data => {
     if (data[0]?.commit?.author?.date) {
