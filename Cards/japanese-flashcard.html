@@ -290,6 +290,7 @@ let state = {
 };
 
 let autoTimer = null;
+let playId = 0;
 
 function saveBookmarks() { localStorage.setItem("jp-bm", JSON.stringify(state.bookmarks)); }
 function getWords() { return WORD_DATA[state.day]?.words || []; }
@@ -331,28 +332,29 @@ function stopAuto() {
 }
 
 function autoPlay(count) {
+  const myId = playId;
   if (!state.playing) return;
   const words = getWords();
   if (count >= 3) {
     state.playCount = 0;
     autoTimer = setTimeout(() => {
+      if (playId !== myId) return;
       if (state.idx < words.length - 1) {
         state.idx++;
         render();
         autoPlay(0);
       } else { stopAuto(); render(); }
-    }, 300);
+    }, 400);
     return;
   }
   state.playCount = count + 1;
   render();
   const w = words[state.idx];
   if (!w) { stopAuto(); render(); return; }
-  // Speak only the first part before " / " for words like し / よん
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
   speak(text, () => {
-    if (!state.playing) return;
-    autoTimer = setTimeout(() => autoPlay(count + 1), 300);
+    if (!state.playing || playId !== myId) return;
+    autoTimer = setTimeout(() => autoPlay(count + 1), 400);
   });
 }
 
@@ -421,7 +423,7 @@ function goNext() {
   const words = getWords();
   if (state.idx < words.length - 1) {
     const wasPlaying = state.playing;
-    if (wasPlaying) { window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
     state.idx++; state.playCount = 0; render();
     if (wasPlaying) autoPlay(0);
   }
@@ -433,7 +435,7 @@ function goPrev() {
   }
   if (state.idx > 0) {
     const wasPlaying = state.playing;
-    if (wasPlaying) { window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
     state.idx--; state.playCount = 0; render();
     if (wasPlaying) autoPlay(0);
   }
