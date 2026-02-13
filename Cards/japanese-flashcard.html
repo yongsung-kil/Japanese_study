@@ -90,6 +90,11 @@ body {
   font-size:24px; cursor:pointer; color:var(--muted); transition:all .2s; z-index:10;
 }
 .bookmark-btn.active { color:var(--success); filter:drop-shadow(0 0 6px rgba(0,210,211,.4)); }
+.difficult-btn {
+  position:absolute; top:16px; right:52px; background:none; border:none;
+  font-size:22px; cursor:pointer; color:var(--muted); transition:all .2s; z-index:10;
+}
+.difficult-btn.active { color:#ffd700; filter:drop-shadow(0 0 6px rgba(255,215,0,.4)); }
 .play-dots {
   position:absolute; top:58px; left:16px; display:flex; gap:4px;
 }
@@ -309,9 +314,9 @@ const DAYS = Object.keys(WORD_DATA).map(Number).sort((a,b)=>a-b);
 
 // 카테고리 구조
 const CATEGORIES = [
-  { id: "basic", title: "기초단어", subtitle: "인사, 숫자, 명사, 동사, 형용사, 음식, 교통", days: [1,2,3,4,5,6,7] },
-  { id: "intermediate", title: "중급단어", subtitle: "감정·상태, 직장·비즈니스", days: [101,102] },
-  { id: "mikmat", title: "미친맛집", subtitle: "1화·2화 단어+표현", days: [201,202,203,204] },
+  { id: "basic", title: "기초단어", subtitle: "인사, 숫자, 명사, 동사, 형용사, 음식, 교통", days: DAYS.filter(d => d >= 1 && d <= 99) },
+  { id: "intermediate", title: "중급단어", subtitle: "감정·상태, 직장·비즈니스", days: DAYS.filter(d => d >= 100 && d <= 199) },
+  { id: "mikmat", title: "미친맛집 시즌1", subtitle: "에피소드별 단어+표현", days: DAYS.filter(d => d >= 200 && d <= 299) },
 ];
 
 // 기존 jp-bm(못 외운 단어) 데이터 정리 → 새 시스템은 jp-learned(외운 단어)
@@ -332,6 +337,8 @@ let state = {
   testWords: [], testIdx: 0, testRevealed: false,
   testScore: { correct: 0, wrong: 0 },
   bookmarks: JSON.parse(localStorage.getItem("jp-learned") || "{}"),
+  difficult: JSON.parse(localStorage.getItem("jp-difficult") || "{}"),
+  listenWords: [], listenIdx: 0,
 };
 
 let autoTimer = null;
@@ -341,6 +348,7 @@ function saveBookmarks() { localStorage.setItem("jp-learned", JSON.stringify(sta
 function getWords() { return WORD_DATA[state.day]?.words || []; }
 function getCurrent() {
   if (state.mode === "test") return state.testWords[state.testIdx];
+  if (state.mode === "listening") return state.listenWords[state.listenIdx];
   return getWords()[state.idx];
 }
 function bmKey(w, day) { return (day||state.day) + "-" + w.h; }
@@ -350,6 +358,41 @@ function unlearnedCount() {
   let c = 0;
   for (const d of DAYS) WORD_DATA[d].words.forEach(w => { if (!state.bookmarks[d+"-"+w.h]) c++; });
   return c;
+}
+
+// === 어려운 단어 ===
+function saveDifficult() { localStorage.setItem("jp-difficult", JSON.stringify(state.difficult)); }
+function dfKey(w, day) { return (day||state.day) + "-" + w.h; }
+function isDf(w, day) { return w ? !!state.difficult[dfKey(w, day)] : false; }
+function getDifficultCount() { return Object.keys(state.difficult).length; }
+function getDifficultWords() {
+  const all = [];
+  for (const d of DAYS) {
+    WORD_DATA[d].words.forEach(w => {
+      if (state.difficult[d+"-"+w.h]) all.push({ ...w, day: d });
+    });
+  }
+  return all;
+}
+function toggleDifficult() {
+  const w = getCurrent(); if (!w) return;
+  const day = state.mode === "listening" ? w.day : state.day;
+  const key = day + "-" + w.h;
+  if (state.difficult[key]) { delete state.difficult[key]; }
+  else { state.difficult[key] = { day, h:w.h, r:w.r, m:w.m, k:w.k||"" }; }
+  saveDifficult(); render();
+}
+function startListening() {
+  const all = getDifficultWords();
+  if (all.length === 0) { alert("어려운 단어가 없어요!\n학습 중 ★을 눌러 추가하세요."); return; }
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  state.listenWords = all; state.listenIdx = 0;
+  state.mode = "listening"; state.showMeaning = false;
+  stopAuto(); render();
+  setTimeout(() => speakOnce(), 300);
 }
 
 // === TTS ===
@@ -384,22 +427,23 @@ function stopAuto() {
 function autoPlay(count) {
   const myId = playId;
   if (!state.playing) return;
-  const words = getWords();
+  const isListen = state.mode === "listening";
+  const words = isListen ? state.listenWords : getWords();
+  const idx = isListen ? state.listenIdx : state.idx;
   if (count >= state.repeatCount) {
     state.playCount = 0;
     autoTimer = setTimeout(() => {
       if (playId !== myId) return;
-      if (state.idx < words.length - 1) {
-        state.idx++; state.slideDir = "left";
-        render();
-        autoPlay(0);
+      if (idx < words.length - 1) {
+        if (isListen) state.listenIdx++; else state.idx++;
+        state.slideDir = "left"; render(); autoPlay(0);
       } else { stopAuto(); render(); }
     }, 400);
     return;
   }
   state.playCount = count + 1;
   render();
-  const w = words[state.idx];
+  const w = words[idx];
   if (!w) { stopAuto(); render(); return; }
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
   speak(text, () => {
@@ -477,6 +521,15 @@ function goNext() {
     if (state.testIdx < state.testWords.length - 1) { state.testIdx++; state.testRevealed = false; state.slideDir = "left"; render(); }
     return;
   }
+  if (state.mode === "listening") {
+    if (state.listenIdx < state.listenWords.length - 1) {
+      const wasPlaying = state.playing;
+      if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+      state.listenIdx++; state.playCount = 0; state.slideDir = "left"; render();
+      if (wasPlaying) autoPlay(0); else setTimeout(() => speakOnce(), 200);
+    }
+    return;
+  }
   const words = getWords();
   if (state.idx < words.length - 1) {
     const wasPlaying = state.playing;
@@ -488,6 +541,15 @@ function goNext() {
 function goPrev() {
   if (state.mode === "test") {
     if (state.testIdx > 0) { state.testIdx--; state.testRevealed = false; state.slideDir = "right"; render(); }
+    return;
+  }
+  if (state.mode === "listening") {
+    if (state.listenIdx > 0) {
+      const wasPlaying = state.playing;
+      if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+      state.listenIdx--; state.playCount = 0; state.slideDir = "right"; render();
+      if (wasPlaying) autoPlay(0); else setTimeout(() => speakOnce(), 200);
+    }
     return;
   }
   if (state.idx > 0) {
@@ -554,6 +616,15 @@ function render() {
         <div class="${badgeClass}">${badgeText}</div>
       </div>`;
     });
+    // 듣기퀴즈 카테고리
+    const dfCount = getDifficultCount();
+    html += `<div class="cat-item" onclick="startListening()" style="border-color:rgba(255,215,0,.2)">
+      <div>
+        <div class="cat-title" style="color:#ffd700">🎧 듣기퀴즈</div>
+        <div class="cat-sub">어려운 단어 듣기 연습 · ★ ${dfCount}단어</div>
+      </div>
+      <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
+    </div>`;
     html += `</div>`;
     html += `<div class="footer">최종 업데이트: ${LAST_UPDATED || "확인 중..."}</div>`;
     app.innerHTML = html;
@@ -599,16 +670,27 @@ function render() {
   }
 
   // Header
-  html += `<div class="header">
-    <div>
-      <button onclick="goMenu()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-      <span class="logo">日本語</span><span class="logo-sub">단어장</span>
-    </div>
-    <div>
-      <button class="test-btn ${unlearnedCount()===0?'disabled':''}" onclick="startTest()">테스트 (${unlearnedCount()})</button>
+  if (state.mode === "listening") {
+    html += `<div class="header">
+      <div>
+        <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
+        <span class="logo" style="color:#ffd700">🎧</span><span class="logo-sub">듣기퀴즈</span>
+      </div>
       <button class="refresh-btn" onclick="doRefresh()">↻</button>
-    </div>
-  </div>`;
+    </div>`;
+    html += `<div class="info">어려운 단어 · ${state.listenIdx+1}/${state.listenWords.length}</div>`;
+  } else {
+    html += `<div class="header">
+      <div>
+        <button onclick="goMenu()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
+        <span class="logo">日本語</span><span class="logo-sub">단어장</span>
+      </div>
+      <div>
+        <button class="test-btn ${unlearnedCount()===0?'disabled':''}" onclick="startTest()">테스트 (${unlearnedCount()})</button>
+        <button class="refresh-btn" onclick="doRefresh()">↻</button>
+      </div>
+    </div>`;
+  }
 
   if (state.mode === "study") {
     // Info
@@ -650,15 +732,25 @@ function render() {
     html += `<div class="card-area${slideClass}" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE(event)">`;
     state.slideDir = "";
 
-    // Bookmark (study only)
+    // Bookmark + Difficult (study) / Difficult only (listening)
     if (state.mode === "study") {
       html += `<button class="bookmark-btn ${bmActive?'active':''}" onclick="toggleBm()">
         ${bmActive ? "✓" : "○"}
       </button>`;
+      const dfActive = isDf(w);
+      html += `<button class="difficult-btn ${dfActive?'active':''}" onclick="toggleDifficult()">
+        ${dfActive ? "★" : "☆"}
+      </button>`;
+    }
+    if (state.mode === "listening") {
+      const dfActive = isDf(w, w.day);
+      html += `<button class="bookmark-btn ${dfActive?'active':''}" onclick="toggleDifficult()" style="color:${dfActive?'#ffd700':'var(--muted)'}; filter:${dfActive?'drop-shadow(0 0 6px rgba(255,215,0,.4))':'none'}">
+        ${dfActive ? "★" : "☆"}
+      </button>`;
     }
 
     // Play dots
-    if (state.playing && state.mode === "study") {
+    if (state.playing && (state.mode === "study" || state.mode === "listening")) {
       html += `<div class="play-dots">
         ${Array.from({length:state.repeatCount},(_,i) => `<div class="dot ${i<state.playCount?'filled':''}"></div>`).join("")}
       </div>`;
@@ -696,8 +788,8 @@ function render() {
     html += `</div>`;
   }
 
-  // Controls (study only)
-  if (state.mode === "study") {
+  // Controls (study + listening)
+  if (state.mode === "study" || state.mode === "listening") {
     const speeds = [0.7, 0.85, 1.0, 1.2, 1.5];
     html += `<div class="controls">
       <div class="ctrl-col">
@@ -718,12 +810,15 @@ function render() {
     </div>`;
 
     // Progress
-    const pct = ((state.idx + 1) / words.length * 100);
+    const isListen = state.mode === "listening";
+    const pctIdx = isListen ? state.listenIdx : state.idx;
+    const pctTotal = isListen ? state.listenWords.length : words.length;
+    const pct = ((pctIdx + 1) / pctTotal * 100);
     html += `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
   }
 
   // Nav
-  if (state.mode === "study" || state.mode === "test") {
+  if (state.mode === "study" || state.mode === "test" || state.mode === "listening") {
     html += `<div class="nav-row">
       <button class="nav-btn" onclick="goPrev()">← 이전</button>
       <button class="nav-btn" onclick="goNext()">다음 →</button>
