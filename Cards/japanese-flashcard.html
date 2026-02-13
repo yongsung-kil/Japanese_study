@@ -283,14 +283,31 @@ body {
 <div id="app"></div>
 <div id="settings-root"></div>
 
-<script>document.write('<script src="words.js?_t=' + Date.now() + '"><\/script>');</script>
+<script>document.write('<script src="기초단어.js?_t=' + Date.now() + '"><\/script>');</script>
+<script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
+<script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
 // === DATA ===
-const DAYS = Object.keys(WORD_DATA).map(Number);
+// 각 단어 파일의 데이터를 WORD_DATA로 통합 (카테고리별 오프셋 적용)
+const WORD_DATA = {};
+const CATEGORY_SOURCES = [
+  { data: WORD_DATA_BASIC,        offset: 0   },
+  { data: WORD_DATA_INTERMEDIATE, offset: 100 },
+  { data: WORD_DATA_MIKMAT,       offset: 200 },
+];
+CATEGORY_SOURCES.forEach(src => {
+  Object.keys(src.data).forEach(k => {
+    WORD_DATA[Number(k) + src.offset] = src.data[k];
+  });
+});
+
+const DAYS = Object.keys(WORD_DATA).map(Number).sort((a,b)=>a-b);
 
 // 카테고리 구조
 const CATEGORIES = [
   { id: "basic", title: "기초단어", subtitle: "인사, 숫자, 명사, 동사, 형용사, 음식, 교통", days: [1,2,3,4,5,6,7] },
+  { id: "intermediate", title: "중급단어", subtitle: "감정·상태, 직장·비즈니스", days: [101,102] },
+  { id: "mikmat", title: "미친맛집", subtitle: "1화 마츠시게의 단골, 2화 치즈케이크", days: [201,202] },
 ];
 
 // 기존 jp-bm(못 외운 단어) 데이터 정리 → 새 시스템은 jp-learned(외운 단어)

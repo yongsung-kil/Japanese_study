@@ -1,6 +1,6 @@
 // 일본어 단어 데이터
 // 구조: DAY번호 → { title: "카테고리", words: [{ h: "히라가나", r: "romaji", m: "뜻" }] }
-const WORD_DATA = {
+const WORD_DATA_BASIC = {
   1: { title: "기본 인사·요일", words: [
     {h:"おはよう",r:"ohayou",m:"[인사] 좋은 아침"},
     {h:"こんにちは",r:"konnichiwa",m:"[인사] 안녕하세요 (낮)"},
