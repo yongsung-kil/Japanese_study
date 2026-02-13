@@ -323,6 +323,10 @@ let state = {
   showMeaning: true, speed: 1.0, showSettings: false, slideDir: "",
   repeatDelay: Number(localStorage.getItem("jp-repeat-delay")) || 2400,
   repeatCount: Number(localStorage.getItem("jp-repeat-count")) || 3,
+  fsMain: Number(localStorage.getItem("jp-fs-main")) || 72,
+  fsReading: Number(localStorage.getItem("jp-fs-reading")) || 20,
+  fsRomaji: Number(localStorage.getItem("jp-fs-romaji")) || 16,
+  fsMeaning: Number(localStorage.getItem("jp-fs-meaning")) || 18,
   catIdx: 0, // 현재 선택된 카테고리
   mode: "categories", // categories | menu | study | test | result
   testWords: [], testIdx: 0, testRevealed: false,
@@ -665,18 +669,19 @@ function render() {
 
     // 메인 텍스트 + 읽기 표기 (한자 있으면 한자가 크게, 히라가나가 작게)
     const mainText = w.k || w.h;
-    const readingSub = w.k ? `<div class="kanji-sub">${w.h}</div>` : '';
-    html += `<div class="hiragana ${isSmall?'small':''}">${mainText}${readingSub}</div>`;
+    const mainFs = isSmall ? Math.round(state.fsMain * 0.75) : state.fsMain;
+    const readingSub = w.k ? `<div class="kanji-sub" style="font-size:${state.fsReading}px">${w.h}</div>` : '';
+    html += `<div class="hiragana" style="font-size:${mainFs}px">${mainText}${readingSub}</div>`;
 
     // Bottom area (romaji + meaning + test buttons)
     html += `<div class="card-bottom">`;
-    html += `<div class="romaji">${w.r}</div>`;
+    html += `<div class="romaji" style="font-size:${state.fsRomaji}px">${w.r}</div>`;
     if (state.mode === "test") {
-      html += `<div class="meaning ${meaningHidden?'hidden':''}" onclick="revealTest()">
+      html += `<div class="meaning ${meaningHidden?'hidden':''}" style="font-size:${state.fsMeaning}px" onclick="revealTest()">
         ${state.testRevealed ? w.m : "탭하여 뜻 확인"}
       </div>`;
     } else {
-      html += `<div class="meaning ${meaningHidden?'hidden':''}" onclick="toggleMeaning()">
+      html += `<div class="meaning ${meaningHidden?'hidden':''}" style="font-size:${state.fsMeaning}px" onclick="toggleMeaning()">
         ${w.m}
       </div>`;
     }
@@ -756,6 +761,43 @@ function render() {
             <span class="settings-unit">초</span>
           </div>
         </div>
+        <div style="font-size:13px;color:var(--muted);padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,.06)">글씨 크기</div>
+        <div class="settings-row">
+          <span class="settings-label">메인 (한자/가나)</span>
+          <div class="settings-value">
+            <input class="settings-input" type="number" min="20" max="120" step="2"
+              value="${state.fsMain}"
+              onchange="updateFontSize('fsMain','jp-fs-main',this.value)">
+            <span class="settings-unit">px</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">읽기 (후리가나)</span>
+          <div class="settings-value">
+            <input class="settings-input" type="number" min="10" max="60" step="2"
+              value="${state.fsReading}"
+              onchange="updateFontSize('fsReading','jp-fs-reading',this.value)">
+            <span class="settings-unit">px</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">로마지</span>
+          <div class="settings-value">
+            <input class="settings-input" type="number" min="8" max="40" step="2"
+              value="${state.fsRomaji}"
+              onchange="updateFontSize('fsRomaji','jp-fs-romaji',this.value)">
+            <span class="settings-unit">px</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">뜻</span>
+          <div class="settings-value">
+            <input class="settings-input" type="number" min="10" max="40" step="2"
+              value="${state.fsMeaning}"
+              onchange="updateFontSize('fsMeaning','jp-fs-meaning',this.value)">
+            <span class="settings-unit">px</span>
+          </div>
+        </div>
       </div>
     </div>`;
   } else {
@@ -782,6 +824,12 @@ function updateRepeatDelay(val) {
   const ms = Math.max(0, Math.round(parseFloat(val) * 1000));
   state.repeatDelay = ms;
   localStorage.setItem("jp-repeat-delay", ms);
+}
+function updateFontSize(key, storageKey, val) {
+  const n = Math.max(8, Math.min(120, parseInt(val) || state[key]));
+  state[key] = n;
+  localStorage.setItem(storageKey, n);
+  render();
 }
 function revealTest() { state.testRevealed = true; render(); }
 function speakOnce() {
