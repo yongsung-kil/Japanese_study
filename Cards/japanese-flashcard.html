@@ -120,9 +120,11 @@ body {
 }
 .meaning.hidden { color:transparent; background:rgba(255,255,255,.08); }
 .example-area { display:flex; align-items:center; justify-content:center; gap:6px; margin:8px 0 4px; }
-.example-speak { position:relative; flex:0 0 auto; background:none; border:none; color:var(--accent); font-size:16px; cursor:pointer; padding:0; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+.example-speak { position:relative; flex:0 0 auto; background:none; border:none; color:var(--accent); font-size:16px; cursor:pointer; padding:0; width:24px; height:24px; display:flex; align-items:center; justify-content:center; transition:color .2s; }
 .example-speak::before { content:""; position:absolute; inset:-16px; }
 .example-speak:active { opacity:.5; }
+.example-speak.speaking { color:#ffd700; animation:ex-pulse .8s ease-in-out infinite; }
+@keyframes ex-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 .example-text { text-align:center; pointer-events:none; }
 .example-jp { font-size:14px; color:var(--accent); }
 .example-meaning { font-size:12px; color:var(--muted); margin-top:2px; }
@@ -454,13 +456,33 @@ function updateMediaSession() {
 }
 
 // === TTS ===
-function speak(text, cb) {
+// Google Translate TTS - <audio> 태그로 재생하므로 화면 꺼져도 계속 재생됨
+let ttsAudio = null;
+
+function speakGoogleTTS(text, cb) {
+  if (ttsAudio) { ttsAudio.pause(); ttsAudio.onended = null; ttsAudio.onerror = null; ttsAudio = null; }
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+  ttsAudio = new Audio(url);
+  ttsAudio.playbackRate = state.speed;
+  ttsAudio.onended = () => { ttsAudio = null; if(cb) cb(); };
+  ttsAudio.onerror = () => {
+    ttsAudio = null;
+    // Google TTS 실패 시 SpeechSynthesis로 폴백
+    speakLocal(text, cb);
+  };
+  ttsAudio.play().catch(() => {
+    ttsAudio = null;
+    speakLocal(text, cb);
+  });
+}
+
+// SpeechSynthesis (폴백 / 오프라인용)
+function speakLocal(text, cb) {
   if (!window.speechSynthesis) { if(cb) cb(); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "ja-JP";
   u.rate = state.speed;
-  // Try to find a Japanese voice
   const voices = window.speechSynthesis.getVoices();
   const jpVoice = voices.find(v => v.lang.startsWith("ja"));
   if (jpVoice) u.voice = jpVoice;
@@ -469,13 +491,22 @@ function speak(text, cb) {
   window.speechSynthesis.speak(u);
 }
 
-// Preload voices
+// 자동재생 중에는 Google TTS, 수동 클릭에는 SpeechSynthesis
+function speak(text, cb) {
+  if (state.playing) {
+    speakGoogleTTS(text, cb);
+  } else {
+    speakGoogleTTS(text, cb);
+  }
+}
+
+// Preload voices (폴백용)
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
-// 화면 다시 켜졌을 때 wake lock 재요청 + speechSynthesis 복구
+// 화면 다시 켜졌을 때 wake lock 재요청
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     if (state.playing) requestWakeLock();
@@ -486,6 +517,7 @@ document.addEventListener('visibilitychange', () => {
 function stopAuto() {
   state.playing = false; state.playCount = 0;
   window.speechSynthesis?.cancel();
+  if (ttsAudio) { ttsAudio.pause(); ttsAudio.onended = null; ttsAudio.onerror = null; ttsAudio = null; }
   if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
   stopSilentAudio();
   releaseWakeLock();
@@ -842,7 +874,7 @@ function render() {
     // 예문 (ex 필드가 있고 showExample이 true일 때만)
     if (w.ex && state.showExample) {
       html += `<div class="example-area">
-        <button class="example-speak" onclick="event.stopPropagation();speakExample()" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()">🔊</button>
+        <button class="example-speak${state.exSpeaking?' speaking':''}" onclick="event.stopPropagation();speakExample()" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()">🔊</button>
         <div class="example-text">
           <div class="example-jp" style="font-size:${state.fsExample}px">${w.ex}</div>
           ${w.exm ? `<div class="example-meaning" style="font-size:${state.fsExampleM}px">${w.exm}</div>` : ''}
@@ -1053,8 +1085,9 @@ function speakExample() {
   const w = getCurrent();
   if (!w?.ex) return;
   stopAuto();
-  speak(w.ex);
+  state.exSpeaking = true;
   render();
+  speak(w.ex, () => { state.exSpeaking = false; render(); });
 }
 function toggleExample() {
   state.showExample = !state.showExample;
