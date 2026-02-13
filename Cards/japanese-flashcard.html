@@ -421,29 +421,64 @@ function releaseWakeLock() {
   if (wakeLock) { wakeLock.release(); wakeLock = null; }
 }
 
-// === SILENT AUDIO (백그라운드 재생 유지) ===
-// 무음 MP3 base64 (1초 루프) - OS가 미디어 재생 중으로 인식
-const SILENT_MP3 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBBIAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBBIAAAAAAAAAAAAAAAAAAAA";
-let silentAudio = null;
-function startSilentAudio() {
-  if (!silentAudio) {
-    silentAudio = new Audio(SILENT_MP3);
-    silentAudio.loop = true;
-    silentAudio.volume = 0.01;
-  }
-  silentAudio.play().catch(() => {});
+// === 백그라운드 오디오 시스템 ===
+// 핵심: 단일 <audio> 엘리먼트를 절대 멈추지 않게 유지
+// TTS → 무음 루프 → TTS → 무음 루프 끊김없이 전환
+
+// 프로그래밍으로 유효한 무음 WAV 생성 (2초)
+function createSilentWav(seconds) {
+  const rate = 8000, samples = rate * seconds;
+  const buf = new ArrayBuffer(44 + samples);
+  const v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36+samples, true); w(8,'WAVE');
+  w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
+  v.setUint16(22,1,true); v.setUint32(24,rate,true);
+  v.setUint32(28,rate,true); v.setUint16(32,1,true);
+  v.setUint16(34,8,true); w(36,'data'); v.setUint32(40,samples,true);
+  for (let i = 0; i < samples; i++) v.setUint8(44+i, 128);
+  return URL.createObjectURL(new Blob([buf], {type:'audio/wav'}));
 }
-function stopSilentAudio() {
-  if (silentAudio) { silentAudio.pause(); }
+const SILENT_URL = createSilentWav(2);
+
+// 단일 오디오 엘리먼트 - TTS와 무음을 번갈아 재생
+const bgAudio = new Audio();
+let ttsPlaying = false;
+let keepAliveTimer = null;
+
+function resumeSilentLoop() {
+  bgAudio.onended = null;
+  bgAudio.onerror = null;
+  bgAudio.loop = true;
+  bgAudio.volume = 0.05;
+  bgAudio.playbackRate = 1.0;
+  bgAudio.src = SILENT_URL;
+  bgAudio.play().catch(() => {});
+}
+
+function startBackgroundAudio() {
+  resumeSilentLoop();
+  if (!keepAliveTimer) {
+    keepAliveTimer = setInterval(() => {
+      if (state.playing && bgAudio.paused && !ttsPlaying) {
+        resumeSilentLoop();
+      }
+    }, 3000);
+  }
+}
+
+function stopBackgroundAudio() {
+  bgAudio.pause();
+  bgAudio.onended = null;
+  bgAudio.onerror = null;
+  ttsPlaying = false;
+  if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
 }
 
 // === MEDIA SESSION (잠금화면 컨트롤) ===
 function updateMediaSession() {
   if (!('mediaSession' in navigator)) return;
   const w = getCurrent();
-  const isListen = state.mode === "listening";
-  const words = isListen ? state.listenWords : getWords();
-  const idx = isListen ? state.listenIdx : state.idx;
   navigator.mediaSession.metadata = new MediaMetadata({
     title: w ? (w.k || w.h) + " - " + w.m : "日本語 단어장",
     artist: w ? w.r : "",
@@ -456,35 +491,26 @@ function updateMediaSession() {
 }
 
 // === TTS ===
-// Google Translate TTS - <audio> 태그로 재생하므로 화면 꺼져도 계속 재생됨
-let ttsAudio = null;
-let ttsPolling = null;
-
+// 같은 bgAudio 엘리먼트로 Google TTS 재생 → 오디오 세션 끊기지 않음
 function speakGoogleTTS(text, cb) {
-  if (ttsAudio) { ttsAudio.pause(); ttsAudio.onended = null; ttsAudio.onerror = null; ttsAudio = null; }
-  if (ttsPolling) { clearInterval(ttsPolling); ttsPolling = null; }
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
-  ttsAudio = new Audio(url);
-  ttsAudio.playbackRate = state.speed;
-  // 폴링으로 실제 재생 완료 감지 (onended 이벤트보다 신뢰성 높음)
-  const checkDone = () => {
-    if (!ttsAudio || ttsAudio.ended || ttsAudio.paused) {
-      if (ttsPolling) { clearInterval(ttsPolling); ttsPolling = null; }
-      ttsAudio = null;
-      if (cb) cb();
-    }
+  ttsPlaying = true;
+  bgAudio.onended = () => {
+    ttsPlaying = false;
+    resumeSilentLoop();
+    if (cb) cb();
   };
-  ttsAudio.onended = checkDone;
-  ttsAudio.onerror = () => {
-    if (ttsPolling) { clearInterval(ttsPolling); ttsPolling = null; }
-    ttsAudio = null;
+  bgAudio.onerror = () => {
+    ttsPlaying = false;
+    resumeSilentLoop();
     speakLocal(text, cb);
   };
-  ttsAudio.play().then(() => {
-    // 재생 시작 후 100ms마다 실제 완료 여부 폴링
-    ttsPolling = setInterval(checkDone, 100);
-  }).catch(() => {
-    ttsAudio = null;
+  bgAudio.loop = false;
+  bgAudio.volume = 1.0;
+  bgAudio.playbackRate = state.speed;
+  bgAudio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+  bgAudio.play().catch(() => {
+    ttsPlaying = false;
+    resumeSilentLoop();
     speakLocal(text, cb);
   });
 }
@@ -494,29 +520,27 @@ function speakLocal(text, cb) {
   if (!window.speechSynthesis) { if(cb) cb(); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ja-JP";
-  u.rate = state.speed;
+  u.lang = "ja-JP"; u.rate = state.speed;
   const voices = window.speechSynthesis.getVoices();
   const jpVoice = voices.find(v => v.lang.startsWith("ja"));
   if (jpVoice) u.voice = jpVoice;
-  // 폴링으로 speechSynthesis.speaking 상태 확인
-  let localPoll = null;
-  const done = () => {
-    if (localPoll) { clearInterval(localPoll); localPoll = null; }
-    if (cb) { const c = cb; cb = null; c(); }
-  };
-  u.onend = done;
-  u.onerror = done;
+  let done = false;
+  const finish = () => { if (done) return; done = true; if (cb) cb(); };
+  u.onend = finish;
+  u.onerror = finish;
   window.speechSynthesis.speak(u);
-  // speaking이 false가 될 때까지 폴링 (onend 누락 대비)
-  localPoll = setInterval(() => {
-    if (!window.speechSynthesis.speaking) done();
-  }, 100);
+  setTimeout(() => { if (!done && !window.speechSynthesis.speaking) finish(); }, 3000);
 }
 
-// TTS 재생 - 실제 재생 완료 후 콜백
+// TTS 래퍼 (최소 재생 시간 보장)
 function speak(text, cb) {
-  speakGoogleTTS(text, cb);
+  const t0 = Date.now();
+  const minMs = Math.max(500, text.length * 150 / state.speed);
+  const safeCb = cb ? () => {
+    const d = Date.now() - t0;
+    d < minMs ? setTimeout(cb, minMs - d) : cb();
+  } : null;
+  speakGoogleTTS(text, safeCb);
 }
 
 // Preload voices (폴백용)
@@ -536,10 +560,9 @@ document.addEventListener('visibilitychange', () => {
 function stopAuto() {
   state.playing = false; state.playCount = 0;
   window.speechSynthesis?.cancel();
-  if (ttsPolling) { clearInterval(ttsPolling); ttsPolling = null; }
-  if (ttsAudio) { ttsAudio.pause(); ttsAudio.onended = null; ttsAudio.onerror = null; ttsAudio = null; }
+  ttsPlaying = false;
   if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
-  stopSilentAudio();
+  stopBackgroundAudio();
   releaseWakeLock();
 }
 
@@ -576,7 +599,7 @@ function togglePlay() {
   if (state.playing) { stopAuto(); }
   else {
     state.playing = true;
-    startSilentAudio();
+    startBackgroundAudio();
     requestWakeLock();
     updateMediaSession();
     autoPlay(0);
