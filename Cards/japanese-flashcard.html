@@ -96,7 +96,7 @@ body {
 }
 .difficult-btn.active { color:#ffd700; filter:drop-shadow(0 0 6px rgba(255,215,0,.4)); }
 .play-dots {
-  position:absolute; top:58px; left:16px; display:flex; gap:4px;
+  position:absolute; top:16px; left:16px; display:flex; gap:4px;
 }
 .dot {
   width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.15); transition:background .3s;
@@ -128,13 +128,6 @@ body {
 .example-text { text-align:center; pointer-events:none; }
 .example-jp { font-size:14px; color:var(--accent); }
 .example-meaning { font-size:12px; color:var(--muted); margin-top:2px; }
-.speak-btn {
-  position:absolute; top:16px; left:16px;
-  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
-  border-radius:50%; width:38px; height:38px;
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-size:16px; transition:all .2s;
-}
 .card-bottom {
   flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px;
 }
@@ -444,6 +437,7 @@ const SILENT_URL = createSilentWav(2);
 // 단일 오디오 엘리먼트 - TTS와 무음을 번갈아 재생
 const bgAudio = new Audio();
 let ttsPlaying = false;
+let speakSeq = 0;
 let keepAliveTimer = null;
 
 function resumeSilentLoop() {
@@ -491,28 +485,39 @@ function updateMediaSession() {
 }
 
 // === TTS ===
+// 진행 중인 모든 음성을 확실히 중단
+function cancelSpeak() {
+  speakSeq++;  // 이전 콜백 무효화
+  window.speechSynthesis?.cancel();
+  bgAudio.pause();
+  bgAudio.onended = null;
+  bgAudio.onerror = null;
+  ttsPlaying = false;
+}
+
 // 같은 bgAudio 엘리먼트로 Google TTS 재생 → 오디오 세션 끊기지 않음
+// speakSeq + done 플래그로 콜백 1회 실행 보장, resumeSilentLoop 지연 호출로 이벤트 캐스케이드 방지
 function speakGoogleTTS(text, cb) {
+  cancelSpeak();
+  const mySeq = ++speakSeq;
+  let done = false;
   ttsPlaying = true;
-  bgAudio.onended = () => {
+  const onDone = (fallback) => {
+    if (done || mySeq !== speakSeq) return;
+    done = true;
     ttsPlaying = false;
-    resumeSilentLoop();
-    if (cb) cb();
+    // src 변경을 지연시켜 onended 이중 발화 방지
+    setTimeout(() => { if (state.playing) resumeSilentLoop(); }, 50);
+    if (fallback) speakLocal(text, cb);
+    else if (cb) cb();
   };
-  bgAudio.onerror = () => {
-    ttsPlaying = false;
-    resumeSilentLoop();
-    speakLocal(text, cb);
-  };
+  bgAudio.onended = () => onDone(false);
+  bgAudio.onerror = () => onDone(true);
   bgAudio.loop = false;
   bgAudio.volume = 1.0;
   bgAudio.playbackRate = state.speed;
   bgAudio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
-  bgAudio.play().catch(() => {
-    ttsPlaying = false;
-    resumeSilentLoop();
-    speakLocal(text, cb);
-  });
+  bgAudio.play().catch(() => onDone(true));
 }
 
 // SpeechSynthesis (폴백 / 오프라인용)
@@ -905,8 +910,6 @@ function render() {
       </div>`;
     }
 
-    // Speaker (top-left)
-    html += `<button class="speak-btn" onclick="speakOnce()">🔊</button>`;
 
     // 메인 텍스트 + 읽기 표기 (한자 있으면 한자가 크게, 히라가나가 작게)
     const mainText = w.k || w.h;
@@ -1121,7 +1124,12 @@ function speakOnce() {
   const w = getCurrent();
   if (w) {
     const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
-    speak(text);
+    speak(text, () => {
+      bgAudio.pause();
+      bgAudio.onended = null;
+      bgAudio.onerror = null;
+      ttsPlaying = false;
+    });
   }
 }
 function speakExample() {
@@ -1130,7 +1138,11 @@ function speakExample() {
   stopAuto();
   state.exSpeaking = true;
   render();
-  speak(w.ex, () => { state.exSpeaking = false; render(); });
+  speak(w.ex, () => {
+    state.exSpeaking = false;
+    stopBackgroundAudio();
+    render();
+  });
 }
 function toggleExample() {
   state.showExample = !state.showExample;
