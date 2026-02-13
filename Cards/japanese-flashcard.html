@@ -884,7 +884,11 @@ function render() {
       </button>
       <div class="ctrl-col">
         <button class="eye-btn ${state.showMeaning?'':'off'}" onclick="toggleMeaning()">👁</button>
-        <span class="speed-label">뜻 ${state.showMeaning?'보기':'숨김'}</span>
+        <span class="speed-label">뜻${state.showMeaning?' 보기':' 숨김'}</span>
+      </div>
+      <div class="ctrl-col">
+        <button class="eye-btn ${state.showExample?'':'off'}" onclick="toggleExample()">例</button>
+        <span class="speed-label">예문${state.showExample?' 보기':' 숨김'}</span>
       </div>
     </div>`;
 
