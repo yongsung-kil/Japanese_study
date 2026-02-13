@@ -603,10 +603,6 @@ function render() {
   </div>`;
 
   if (state.mode === "study") {
-    // Days
-    html += `<div class="days">${DAYS.map(d =>
-      `<button class="day-btn ${d===state.day?'active':''}" onclick="selectDay(${d})">DAY ${d}</button>`
-    ).join("")}</div>`;
     // Info
     html += `<div class="info">${WORD_DATA[state.day].title} · ${state.idx+1}/${words.length}</div>`;
   }
