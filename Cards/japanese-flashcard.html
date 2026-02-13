@@ -119,6 +119,10 @@ body {
   padding:8px 20px; cursor:pointer; transition:all .3s; text-align:center; min-width:120px;
 }
 .meaning.hidden { color:transparent; background:rgba(255,255,255,.08); }
+.example-area { text-align:center; margin:8px 0 4px; cursor:pointer; }
+.example-area:active { opacity:.6; }
+.example-jp { font-size:14px; color:var(--accent); }
+.example-meaning { font-size:12px; color:var(--muted); margin-top:2px; }
 .speak-btn {
   position:absolute; top:16px; left:16px;
   background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
@@ -325,13 +329,16 @@ if (localStorage.getItem("jp-bm")) localStorage.removeItem("jp-bm");
 // === STATE ===
 let state = {
   day: 1, idx: 0, playing: false, playCount: 0,
-  showMeaning: true, speed: 1.0, showSettings: false, slideDir: "",
+  showMeaning: true, showExample: localStorage.getItem("jp-show-example") !== "false",
+  speed: 1.0, showSettings: false, slideDir: "",
   repeatDelay: Number(localStorage.getItem("jp-repeat-delay")) || 2400,
   repeatCount: Number(localStorage.getItem("jp-repeat-count")) || 3,
   fsMain: Number(localStorage.getItem("jp-fs-main")) || 72,
   fsReading: Number(localStorage.getItem("jp-fs-reading")) || 20,
   fsRomaji: Number(localStorage.getItem("jp-fs-romaji")) || 16,
   fsMeaning: Number(localStorage.getItem("jp-fs-meaning")) || 18,
+  fsExample: Number(localStorage.getItem("jp-fs-example")) || 14,
+  fsExampleM: Number(localStorage.getItem("jp-fs-example-m")) || 12,
   catIdx: 0, // 현재 선택된 카테고리
   mode: "categories", // categories | menu | study | test | result
   testWords: [], testIdx: 0, testRevealed: false,
@@ -395,6 +402,54 @@ function startListening() {
   setTimeout(() => speakOnce(), 300);
 }
 
+// === WAKE LOCK (화면 꺼짐 방지) ===
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch(e) {}
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+}
+
+// === SILENT AUDIO (백그라운드 재생 유지) ===
+// 무음 MP3 base64 (1초 루프) - OS가 미디어 재생 중으로 인식
+const SILENT_MP3 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBBIAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBBIAAAAAAAAAAAAAAAAAAAA";
+let silentAudio = null;
+function startSilentAudio() {
+  if (!silentAudio) {
+    silentAudio = new Audio(SILENT_MP3);
+    silentAudio.loop = true;
+    silentAudio.volume = 0.01;
+  }
+  silentAudio.play().catch(() => {});
+}
+function stopSilentAudio() {
+  if (silentAudio) { silentAudio.pause(); }
+}
+
+// === MEDIA SESSION (잠금화면 컨트롤) ===
+function updateMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  const w = getCurrent();
+  const isListen = state.mode === "listening";
+  const words = isListen ? state.listenWords : getWords();
+  const idx = isListen ? state.listenIdx : state.idx;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: w ? (w.k || w.h) + " - " + w.m : "日本語 단어장",
+    artist: w ? w.r : "",
+    album: state.mode === "listening" ? "듣기퀴즈" : (WORD_DATA[state.day]?.title || "日本語"),
+  });
+  navigator.mediaSession.setActionHandler('play', () => { if (!state.playing) togglePlay(); });
+  navigator.mediaSession.setActionHandler('pause', () => { if (state.playing) togglePlay(); });
+  navigator.mediaSession.setActionHandler('previoustrack', () => goPrev());
+  navigator.mediaSession.setActionHandler('nexttrack', () => goNext());
+}
+
 // === TTS ===
 function speak(text, cb) {
   if (!window.speechSynthesis) { if(cb) cb(); return; }
@@ -417,11 +472,20 @@ if (window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
+// 화면 다시 켜졌을 때 wake lock 재요청 + speechSynthesis 복구
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (state.playing) requestWakeLock();
+  }
+});
+
 // === AUTO PLAY ===
 function stopAuto() {
   state.playing = false; state.playCount = 0;
   window.speechSynthesis?.cancel();
   if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  stopSilentAudio();
+  releaseWakeLock();
 }
 
 function autoPlay(count) {
@@ -443,6 +507,7 @@ function autoPlay(count) {
   }
   state.playCount = count + 1;
   render();
+  updateMediaSession();
   const w = words[idx];
   if (!w) { stopAuto(); render(); return; }
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
@@ -454,7 +519,13 @@ function autoPlay(count) {
 
 function togglePlay() {
   if (state.playing) { stopAuto(); }
-  else { state.playing = true; autoPlay(0); }
+  else {
+    state.playing = true;
+    startSilentAudio();
+    requestWakeLock();
+    updateMediaSession();
+    autoPlay(0);
+  }
   render();
 }
 
@@ -765,6 +836,14 @@ function render() {
     const readingSub = w.k ? `<div class="kanji-sub" style="font-size:${state.fsReading}px">${w.h}</div>` : '';
     html += `<div class="hiragana" style="font-size:${mainFs}px">${mainText}${readingSub}</div>`;
 
+    // 예문 (ex 필드가 있고 showExample이 true일 때만)
+    if (w.ex && state.showExample) {
+      html += `<div class="example-area" onclick="speakExample()">
+        <div class="example-jp" style="font-size:${state.fsExample}px">${w.ex}</div>
+        ${w.exm ? `<div class="example-meaning" style="font-size:${state.fsExampleM}px">${w.exm}</div>` : ''}
+      </div>`;
+    }
+
     // Bottom area (romaji + meaning + test buttons)
     html += `<div class="card-bottom">`;
     html += `<div class="romaji" style="font-size:${state.fsRomaji}px">${w.r}</div>`;
@@ -893,6 +972,32 @@ function render() {
             <span class="settings-unit">px</span>
           </div>
         </div>
+        <div style="font-size:13px;color:var(--muted);padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,.06)">예문</div>
+        <div class="settings-row">
+          <span class="settings-label">예문 표시</span>
+          <div class="settings-value">
+            <button style="background:${state.showExample?'var(--accent)':'var(--day-inactive)'};color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
+              onclick="toggleExample()">${state.showExample?'ON':'OFF'}</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">예문 (일본어)</span>
+          <div class="settings-value">
+            <input class="settings-input" type="number" min="8" max="30" step="1"
+              value="${state.fsExample}"
+              onchange="updateFontSize('fsExample','jp-fs-example',this.value)">
+            <span class="settings-unit">px</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">예문 (뜻)</span>
+          <div class="settings-value">
+            <input class="settings-input" type="number" min="8" max="26" step="1"
+              value="${state.fsExampleM}"
+              onchange="updateFontSize('fsExampleM','jp-fs-example-m',this.value)">
+            <span class="settings-unit">px</span>
+          </div>
+        </div>
       </div>
     </div>`;
   } else {
@@ -933,6 +1038,18 @@ function speakOnce() {
     const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
     speak(text);
   }
+}
+function speakExample() {
+  const w = getCurrent();
+  if (!w?.ex) return;
+  stopAuto();
+  speak(w.ex);
+  render();
+}
+function toggleExample() {
+  state.showExample = !state.showExample;
+  localStorage.setItem("jp-show-example", state.showExample);
+  render();
 }
 function toggleBm() {
   const w = getCurrent(); if (!w) return;
