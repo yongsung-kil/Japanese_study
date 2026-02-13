@@ -663,9 +663,10 @@ function render() {
     // Speaker (top-left)
     html += `<button class="speak-btn" onclick="speakOnce()">🔊</button>`;
 
-    // Hiragana (center, flex:1) + 한자 표기
-    const kanjiSub = w.k ? `<div class="kanji-sub">${w.k}</div>` : '';
-    html += `<div class="hiragana ${isSmall?'small':''}">${w.h}${kanjiSub}</div>`;
+    // 메인 텍스트 + 읽기 표기 (한자 있으면 한자가 크게, 히라가나가 작게)
+    const mainText = w.k || w.h;
+    const readingSub = w.k ? `<div class="kanji-sub">${w.h}</div>` : '';
+    html += `<div class="hiragana ${isSmall?'small':''}">${mainText}${readingSub}</div>`;
 
     // Bottom area (romaji + meaning + test buttons)
     html += `<div class="card-bottom">`;
