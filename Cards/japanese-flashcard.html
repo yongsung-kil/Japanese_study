@@ -491,13 +491,20 @@ function speakLocal(text, cb) {
   window.speechSynthesis.speak(u);
 }
 
-// 자동재생 중에는 Google TTS, 수동 클릭에는 SpeechSynthesis
+// TTS 재생 (콜백이 너무 빨리 오는 것 방지 - 글자수 기반 최소 시간 보장)
 function speak(text, cb) {
-  if (state.playing) {
-    speakGoogleTTS(text, cb);
-  } else {
-    speakGoogleTTS(text, cb);
-  }
+  const startTime = Date.now();
+  // 글자수 × 150ms / 배속 = 최소 재생 시간 (일본어 평균 발화 속도 기준)
+  const minDuration = Math.max(500, text.length * 150 / state.speed);
+  const safeCb = cb ? () => {
+    const elapsed = Date.now() - startTime;
+    if (elapsed < minDuration) {
+      setTimeout(cb, minDuration - elapsed);
+    } else {
+      cb();
+    }
+  } : null;
+  speakGoogleTTS(text, safeCb);
 }
 
 // Preload voices (폴백용)
