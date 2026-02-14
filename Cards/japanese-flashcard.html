@@ -346,7 +346,6 @@ let state = {
   listenWords: [], listenIdx: 0,
 };
 
-let autoTimer = null;
 let playId = 0;
 
 function saveBookmarks() { localStorage.setItem("jp-learned", JSON.stringify(state.bookmarks)); }
@@ -434,11 +433,25 @@ function createSilentWav(seconds) {
 }
 const SILENT_URL = createSilentWav(2);
 
-// 단일 오디오 엘리먼트 - TTS와 무음을 번갈아 재생
+// 듀얼 오디오 엘리먼트 - bgAudio는 무음 루프 전용(세션 유지), ttsAudio는 TTS/딜레이 전용
 const bgAudio = new Audio();
+const ttsAudio = new Audio();
 let ttsPlaying = false;
 let speakSeq = 0;
 let keepAliveTimer = null;
+
+// Web Audio API - 화면 꺼져도 오디오 처리 스레드 유지
+let audioCtx = null;
+function ensureAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.createMediaElementSource(bgAudio).connect(audioCtx.destination);
+    audioCtx.createMediaElementSource(ttsAudio).connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+}
 
 function resumeSilentLoop() {
   bgAudio.onended = null;
@@ -450,11 +463,35 @@ function resumeSilentLoop() {
   bgAudio.play().catch(() => {});
 }
 
+// 타이머 대신 오디오 기반 딜레이 (화면 꺼져도 ended 이벤트 발생)
+// ttsAudio 사용 - bgAudio는 무음 루프 유지
+function playDelayAudio(delayMs, callback) {
+  const delaySec = Math.max(0.1, delayMs / 1000);
+  const url = createSilentWav(delaySec);
+  ttsAudio.onended = () => {
+    URL.revokeObjectURL(url);
+    if (callback) callback();
+  };
+  ttsAudio.onerror = () => {
+    URL.revokeObjectURL(url);
+    if (callback) callback();
+  };
+  ttsAudio.loop = false;
+  ttsAudio.volume = 0.01;
+  ttsAudio.playbackRate = 1.0;
+  ttsAudio.src = url;
+  ttsAudio.play().catch(() => { if (callback) callback(); });
+}
+
 function startBackgroundAudio() {
+  ensureAudioContext();
   resumeSilentLoop();
   if (!keepAliveTimer) {
     keepAliveTimer = setInterval(() => {
-      if (state.playing && bgAudio.paused && !ttsPlaying) {
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      if (state.playing && bgAudio.paused) {
         resumeSilentLoop();
       }
     }, 3000);
@@ -463,8 +500,9 @@ function startBackgroundAudio() {
 
 function stopBackgroundAudio() {
   bgAudio.pause();
-  bgAudio.onended = null;
-  bgAudio.onerror = null;
+  ttsAudio.pause();
+  ttsAudio.onended = null;
+  ttsAudio.onerror = null;
   ttsPlaying = false;
   if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
 }
@@ -489,9 +527,10 @@ function updateMediaSession() {
 function cancelSpeak() {
   speakSeq++;  // 이전 콜백 무효화
   window.speechSynthesis?.cancel();
-  bgAudio.pause();
-  bgAudio.onended = null;
-  bgAudio.onerror = null;
+  // bgAudio는 건드리지 않음 (무음 루프 유지) - ttsAudio만 중단
+  ttsAudio.pause();
+  ttsAudio.onended = null;
+  ttsAudio.onerror = null;
   ttsPlaying = false;
 }
 
@@ -506,18 +545,17 @@ function speakGoogleTTS(text, cb) {
     if (done || mySeq !== speakSeq) return;
     done = true;
     ttsPlaying = false;
-    // src 변경을 지연시켜 onended 이중 발화 방지
-    setTimeout(() => { if (state.playing) resumeSilentLoop(); }, 50);
+    // resumeSilentLoop 제거 - 콜백에서 다음 오디오(딜레이/무음)를 직접 재생
     if (fallback) speakLocal(text, cb);
     else if (cb) cb();
   };
-  bgAudio.onended = () => onDone(false);
-  bgAudio.onerror = () => onDone(true);
-  bgAudio.loop = false;
-  bgAudio.volume = 1.0;
-  bgAudio.playbackRate = state.speed;
-  bgAudio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
-  bgAudio.play().catch(() => onDone(true));
+  ttsAudio.onended = () => onDone(false);
+  ttsAudio.onerror = () => onDone(true);
+  ttsAudio.loop = false;
+  ttsAudio.volume = 1.0;
+  ttsAudio.playbackRate = state.speed;
+  ttsAudio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+  ttsAudio.play().catch(() => onDone(true));
 }
 
 // SpeechSynthesis (폴백 / 오프라인용)
@@ -543,7 +581,9 @@ function speak(text, cb) {
   const minMs = Math.max(500, text.length * 150 / state.speed);
   const safeCb = cb ? () => {
     const d = Date.now() - t0;
-    d < minMs ? setTimeout(cb, minMs - d) : cb();
+    // setTimeout 대신 무음 오디오로 딜레이 (화면 꺼져도 동작)
+    if (d < minMs) playDelayAudio(minMs - d, cb);
+    else cb();
   } : null;
   speakGoogleTTS(text, safeCb);
 }
@@ -554,19 +594,35 @@ if (window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
-// 화면 다시 켜졌을 때 wake lock 재요청
+// 화면 켜짐/꺼짐 처리
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    if (state.playing) requestWakeLock();
+    // 화면 다시 켜짐 - wake lock 재요청 + AudioContext 복원
+    if (state.playing) {
+      requestWakeLock();
+      ensureAudioContext();
+      // 혹시 오디오가 멈춰있으면 무음 루프 재시작
+      if (bgAudio.paused) {
+        resumeSilentLoop();
+      }
+    }
+  } else {
+    // 화면 꺼짐 - AudioContext가 suspended 되지 않도록 유지
+    if (state.playing && audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
   }
 });
+
+// 첫 터치/클릭 시 AudioContext 초기화 (브라우저 autoplay 정책)
+document.addEventListener('touchstart', () => ensureAudioContext(), { once: true });
+document.addEventListener('click', () => ensureAudioContext(), { once: true });
 
 // === AUTO PLAY ===
 function stopAuto() {
   state.playing = false; state.playCount = 0;
-  window.speechSynthesis?.cancel();
-  ttsPlaying = false;
-  if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  playId++;  // 진행 중인 오디오 체인 콜백 무효화
+  cancelSpeak();
   stopBackgroundAudio();
   releaseWakeLock();
 }
@@ -579,13 +635,14 @@ function autoPlay(count) {
   const idx = isListen ? state.listenIdx : state.idx;
   if (count >= state.repeatCount) {
     state.playCount = 0;
-    autoTimer = setTimeout(() => {
-      if (playId !== myId) return;
+    // setTimeout 대신 무음 오디오로 딜레이 (화면 꺼져도 ended 이벤트 발생)
+    playDelayAudio(400, () => {
+      if (playId !== myId || !state.playing) return;
       if (idx < words.length - 1) {
         if (isListen) state.listenIdx++; else state.idx++;
         state.slideDir = "left"; render(); autoPlay(0);
       } else { stopAuto(); render(); }
-    }, 400);
+    });
     return;
   }
   state.playCount = count + 1;
@@ -596,7 +653,11 @@ function autoPlay(count) {
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
   speak(text, () => {
     if (!state.playing || playId !== myId) return;
-    autoTimer = setTimeout(() => autoPlay(count + 1), state.repeatDelay);
+    // setTimeout 대신 무음 오디오로 반복 간격 딜레이
+    playDelayAudio(state.repeatDelay, () => {
+      if (!state.playing || playId !== myId) return;
+      autoPlay(count + 1);
+    });
   });
 }
 
@@ -678,16 +739,16 @@ function goNext() {
   if (state.mode === "listening") {
     if (state.listenIdx < state.listenWords.length - 1) {
       const wasPlaying = state.playing;
-      if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+      if (wasPlaying) { playId++; cancelSpeak(); }
       state.listenIdx++; state.playCount = 0; state.slideDir = "left"; render();
-      if (wasPlaying) autoPlay(0); else setTimeout(() => speakOnce(), 200);
+      if (wasPlaying) autoPlay(0); else speakOnce();
     }
     return;
   }
   const words = getWords();
   if (state.idx < words.length - 1) {
     const wasPlaying = state.playing;
-    if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    if (wasPlaying) { playId++; cancelSpeak(); }
     state.idx++; state.playCount = 0; state.slideDir = "left"; render();
     if (wasPlaying) autoPlay(0);
   }
@@ -700,15 +761,15 @@ function goPrev() {
   if (state.mode === "listening") {
     if (state.listenIdx > 0) {
       const wasPlaying = state.playing;
-      if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+      if (wasPlaying) { playId++; cancelSpeak(); }
       state.listenIdx--; state.playCount = 0; state.slideDir = "right"; render();
-      if (wasPlaying) autoPlay(0); else setTimeout(() => speakOnce(), 200);
+      if (wasPlaying) autoPlay(0); else speakOnce();
     }
     return;
   }
   if (state.idx > 0) {
     const wasPlaying = state.playing;
-    if (wasPlaying) { playId++; window.speechSynthesis?.cancel(); if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    if (wasPlaying) { playId++; cancelSpeak(); }
     state.idx--; state.playCount = 0; state.slideDir = "right"; render();
     if (wasPlaying) autoPlay(0);
   }
@@ -724,17 +785,19 @@ document.addEventListener("keydown", e => {
 // === 새로고침 ===
 function doRefresh() { location.reload(); }
 
-// === 최종 업데이트 시간 (GitHub API에서 자동 조회) ===
+// === 실제 배포(반영) 시간 확인 ===
+// 서버의 Last-Modified 헤더 = GitHub Pages에 실제 반영된 시점
 let LAST_UPDATED = "";
-fetch("https://api.github.com/repos/yongsung-kil/Japanese_study/commits?per_page=1&path=Cards")
-  .then(r => r.json())
-  .then(data => {
-    if (data[0]?.commit?.author?.date) {
-      const d = new Date(data[0].commit.author.date);
-      LAST_UPDATED = d.toLocaleString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
-      render();
+fetch("기초단어.js?_check=" + Date.now(), { method: "HEAD" })
+  .then(r => {
+    const lm = r.headers.get("last-modified");
+    if (lm) {
+      LAST_UPDATED = new Date(lm).toLocaleString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+    } else {
+      LAST_UPDATED = "확인 불가";
     }
-  }).catch(() => {});
+    render();
+  }).catch(() => { LAST_UPDATED = "확인 불가"; render(); });
 
 // === RENDER ===
 function render() {
@@ -1125,9 +1188,9 @@ function speakOnce() {
   if (w) {
     const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
     speak(text, () => {
-      bgAudio.pause();
-      bgAudio.onended = null;
-      bgAudio.onerror = null;
+      ttsAudio.pause();
+      ttsAudio.onended = null;
+      ttsAudio.onerror = null;
       ttsPlaying = false;
     });
   }
