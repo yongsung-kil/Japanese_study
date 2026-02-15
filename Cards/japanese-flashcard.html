@@ -169,7 +169,6 @@ body {
   border-radius:10px; padding:8px 20px; color:var(--muted);
   font-size:13px; cursor:pointer; font-family:'Noto Sans KR',sans-serif;
 }
-.footer { font-size:10px; color:var(--muted); padding:0 0 8px; text-align:center; flex-shrink:0; }
 .test-actions { display:flex; gap:16px; margin-top:8px; }
 .test-wrong {
   background:rgba(233,69,96,.2); border:2px solid var(--accent);
@@ -300,7 +299,7 @@ body {
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
-const APP_VERSION = "v26.02.15.14:44:00";
+const APP_VERSION = "v26.02.15.14:49:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -462,13 +461,20 @@ let ttsPlaying = false;
 let speakSeq = 0;
 let keepAliveTimer = null;
 
-// Web Audio API - 화면 꺼져도 오디오 처리 스레드 유지
+// Web Audio API - 무음 오실레이터로 오디오 스레드만 유지
+// 중요: audio 엘리먼트를 AudioContext에 연결하지 않음!
+// createMediaElementSource()로 연결하면 AudioContext가 suspend될 때
+// 소리 출력이 차단되어 화면 꺼짐 시 소리가 안 남
 let audioCtx = null;
 function ensureAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    audioCtx.createMediaElementSource(bgAudio).connect(audioCtx.destination);
-    audioCtx.createMediaElementSource(ttsAudio).connect(audioCtx.destination);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {});
@@ -808,20 +814,6 @@ document.addEventListener("keydown", e => {
 // === 새로고침 ===
 function doRefresh() { location.reload(); }
 
-// === 실제 배포(반영) 시간 확인 ===
-// 서버의 Last-Modified 헤더 = GitHub Pages에 실제 반영된 시점
-let LAST_UPDATED = "";
-fetch("기초단어.js?_check=" + Date.now(), { method: "HEAD" })
-  .then(r => {
-    const lm = r.headers.get("last-modified");
-    if (lm) {
-      LAST_UPDATED = new Date(lm).toLocaleString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
-    } else {
-      LAST_UPDATED = "확인 불가";
-    }
-    render();
-  }).catch(() => { LAST_UPDATED = "확인 불가"; render(); });
-
 // === RENDER ===
 function render() {
   const app = document.getElementById("app");
@@ -866,7 +858,6 @@ function render() {
       <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
     </div>`;
     html += `</div>`;
-    html += `<div class="footer">최종 업데이트: ${LAST_UPDATED || "확인 중..."}</div>`;
     app.innerHTML = html;
     document.getElementById("settings-root").innerHTML = "";
     return;
@@ -903,7 +894,6 @@ function render() {
       </div>`;
     }
     html += `</div>`;
-    html += `<div class="footer">최종 업데이트: ${LAST_UPDATED || "확인 중..."}</div>`;
     app.innerHTML = html;
     document.getElementById("settings-root").innerHTML = "";
     return;
@@ -1090,8 +1080,6 @@ function render() {
       <button class="nav-btn" onclick="goNext()">다음 →</button>
     </div>`;
   }
-
-  html += `<div class="footer">최종 업데이트: ${LAST_UPDATED || "확인 중..."}</div>`;
 
   app.innerHTML = html;
 
