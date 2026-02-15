@@ -357,6 +357,7 @@ let state = {
   bookmarks: JSON.parse(localStorage.getItem("jp-learned") || "{}"),
   difficult: JSON.parse(localStorage.getItem("jp-difficult") || "{}"),
   listenWords: [], listenIdx: 0,
+  speakKorean: localStorage.getItem("jp-speak-korean") !== "false",
 };
 
 let playId = 0;
@@ -653,6 +654,37 @@ function speak(text, cb) {
   speakGoogleTTS(text, safeCb);
 }
 
+// 한국어 TTS (Google TTS, tl=ko)
+function speakKo(text, cb) {
+  cancelSpeak();
+  const mySeq = ++speakSeq;
+  let done = false;
+  ttsPlaying = true;
+  const onDone = () => {
+    if (done || mySeq !== speakSeq) return;
+    done = true;
+    ttsPlaying = false;
+    if (cb) cb();
+  };
+  ttsAudio.onended = onDone;
+  ttsAudio.onerror = onDone;
+  ttsAudio.loop = false;
+  ttsAudio.volume = 1.0;
+  ttsAudio.playbackRate = 1.0;
+  const cacheKey = "ko:" + text;
+  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encodeURIComponent(text)}`;
+  if (ttsBlobs[cacheKey]) {
+    ttsAudio.src = ttsBlobs[cacheKey];
+    ttsAudio.play().catch(() => onDone());
+  } else {
+    ttsAudio.src = directUrl;
+    ttsAudio.play().catch(() => onDone());
+    fetch(directUrl).then(r => r.blob()).then(blob => {
+      if (!ttsBlobs[cacheKey]) ttsBlobs[cacheKey] = URL.createObjectURL(blob);
+    }).catch(() => {});
+  }
+}
+
 // Preload voices (폴백용)
 if (window.speechSynthesis) {
   window.speechSynthesis.getVoices();
@@ -693,20 +725,37 @@ function stopAuto() {
   clearTTSCache();
 }
 
+function autoPlayStart() { return state.speakKorean ? -1 : 0; }
+
 function autoPlay(count) {
   const myId = playId;
   if (!state.playing) return;
   const isListen = state.mode === "listening";
   const words = isListen ? state.listenWords : getWords();
   const idx = isListen ? state.listenIdx : state.idx;
+
+  // count === -1: 한국어 뜻 먼저 말하기
+  if (count === -1) {
+    const w = words[idx];
+    if (!w) { stopAuto(); render(); return; }
+    updateMediaSession();
+    speakKo(w.m, () => {
+      if (!state.playing || playId !== myId) return;
+      playDelayAudio(600, () => {
+        if (!state.playing || playId !== myId) return;
+        autoPlay(0);
+      });
+    });
+    return;
+  }
+
   if (count >= state.repeatCount) {
     state.playCount = 0;
-    // setTimeout 대신 무음 오디오로 딜레이 (화면 꺼져도 ended 이벤트 발생)
     playDelayAudio(400, () => {
       if (playId !== myId || !state.playing) return;
       if (idx < words.length - 1) {
         if (isListen) state.listenIdx++; else state.idx++;
-        state.slideDir = "left"; render(); autoPlay(0);
+        state.slideDir = "left"; render(); autoPlay(autoPlayStart());
       } else { stopAuto(); render(); }
     });
     return;
@@ -719,7 +768,6 @@ function autoPlay(count) {
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
   speak(text, () => {
     if (!state.playing || playId !== myId) return;
-    // setTimeout 대신 무음 오디오로 반복 간격 딜레이
     playDelayAudio(state.repeatDelay, () => {
       if (!state.playing || playId !== myId) return;
       autoPlay(count + 1);
@@ -734,7 +782,7 @@ function togglePlay() {
     startBackgroundAudio();
     requestWakeLock();
     updateMediaSession();
-    autoPlay(0);
+    autoPlay(autoPlayStart());
   }
   render();
 }
@@ -808,7 +856,7 @@ function goNext() {
       const wasPlaying = state.playing;
       if (wasPlaying) { playId++; cancelSpeak(); }
       state.listenIdx++; state.playCount = 0; state.slideDir = "left"; render();
-      if (wasPlaying) autoPlay(0); else speakOnce();
+      if (wasPlaying) autoPlay(autoPlayStart()); else speakOnce();
     }
     return;
   }
@@ -817,7 +865,7 @@ function goNext() {
     const wasPlaying = state.playing;
     if (wasPlaying) { playId++; cancelSpeak(); }
     state.idx++; state.playCount = 0; state.slideDir = "left"; render();
-    if (wasPlaying) autoPlay(0);
+    if (wasPlaying) autoPlay(autoPlayStart());
   }
 }
 function goPrev() {
@@ -830,7 +878,7 @@ function goPrev() {
       const wasPlaying = state.playing;
       if (wasPlaying) { playId++; cancelSpeak(); }
       state.listenIdx--; state.playCount = 0; state.slideDir = "right"; render();
-      if (wasPlaying) autoPlay(0); else speakOnce();
+      if (wasPlaying) autoPlay(autoPlayStart()); else speakOnce();
     }
     return;
   }
@@ -838,7 +886,7 @@ function goPrev() {
     const wasPlaying = state.playing;
     if (wasPlaying) { playId++; cancelSpeak(); }
     state.idx--; state.playCount = 0; state.slideDir = "right"; render();
-    if (wasPlaying) autoPlay(0);
+    if (wasPlaying) autoPlay(autoPlayStart());
   }
 }
 
@@ -1155,6 +1203,13 @@ function render() {
               onclick="toggleHideLearned()">${state.hideLearned?'ON':'OFF'}</button>
           </div>
         </div>
+        <div class="settings-row">
+          <span class="settings-label">한국어 뜻 읽기</span>
+          <div class="settings-value">
+            <button style="background:${state.speakKorean?'var(--success)':'var(--day-inactive)'};color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
+              onclick="toggleSpeakKorean()">${state.speakKorean?'ON':'OFF'}</button>
+          </div>
+        </div>
         <div style="font-size:13px;color:var(--muted);padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,.06)">글씨 크기</div>
         <div class="settings-row">
           <span class="settings-label">메인 (한자/가나)</span>
@@ -1299,6 +1354,11 @@ function toggleExample() {
   localStorage.setItem("jp-show-example", state.showExample);
   render();
 }
+function toggleSpeakKorean() {
+  state.speakKorean = !state.speakKorean;
+  localStorage.setItem("jp-speak-korean", state.speakKorean);
+  render();
+}
 function toggleHideLearned() {
   state.hideLearned = !state.hideLearned;
   localStorage.setItem("jp-hide-learned", state.hideLearned);
@@ -1324,7 +1384,7 @@ function toggleBm() {
     if (visible.length === 0) { state.idx = 0; if (wasPlaying) stopAuto(); }
     else {
       if (state.idx >= visible.length) { state.idx = visible.length - 1; }
-      if (wasPlaying) { state.playCount = 0; autoPlay(0); }
+      if (wasPlaying) { state.playCount = 0; autoPlay(autoPlayStart()); }
     }
   }
   render();
