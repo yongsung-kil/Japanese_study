@@ -25,6 +25,7 @@ body {
   font-family:'Noto Sans KR',sans-serif; color:var(--text);
   display:flex; flex-direction:column; align-items:center;
   overflow:hidden; user-select:none; overscroll-behavior:none;
+  padding-bottom:env(safe-area-inset-bottom,0px);
 }
 #app {
   width:100%; max-width:480px; height:100%;
@@ -328,6 +329,7 @@ if (localStorage.getItem("jp-bm")) localStorage.removeItem("jp-bm");
 let state = {
   day: 1, idx: 0, playing: false, playCount: 0,
   showMeaning: true, showExample: localStorage.getItem("jp-show-example") !== "false",
+  hideLearned: localStorage.getItem("jp-hide-learned") === "true",
   speed: 1.0, showSettings: false, slideDir: "",
   repeatDelay: Number(localStorage.getItem("jp-repeat-delay")) || 2400,
   repeatCount: Number(localStorage.getItem("jp-repeat-count")) || 3,
@@ -349,7 +351,14 @@ let state = {
 let playId = 0;
 
 function saveBookmarks() { localStorage.setItem("jp-learned", JSON.stringify(state.bookmarks)); }
-function getWords() { return WORD_DATA[state.day]?.words || []; }
+function getWords() {
+  const all = WORD_DATA[state.day]?.words || [];
+  if (state.hideLearned && state.mode === "study") {
+    return all.filter(w => !state.bookmarks[bmKey(w)]);
+  }
+  return all;
+}
+function getAllWords() { return WORD_DATA[state.day]?.words || []; }
 function getCurrent() {
   if (state.mode === "test") return state.testWords[state.testIdx];
   if (state.mode === "listening") return state.listenWords[state.listenIdx];
@@ -911,7 +920,11 @@ function render() {
 
   if (state.mode === "study") {
     // Info
-    html += `<div class="info">${WORD_DATA[state.day].title} · ${state.idx+1}/${words.length}</div>`;
+    const totalWordsCount = getAllWords().length;
+    const infoCount = state.hideLearned && words.length < totalWordsCount
+      ? `${words.length > 0 ? state.idx+1 : 0}/${words.length} (전체 ${totalWordsCount})`
+      : `${state.idx+1}/${words.length}`;
+    html += `<div class="info">${WORD_DATA[state.day].title} · ${infoCount}</div>`;
   }
 
   if (state.mode === "test") {
@@ -937,6 +950,15 @@ function render() {
     </div>`;
     app.innerHTML = html;
     return;
+  }
+
+  // 외운 단어 숨기기 ON + 모든 단어 외움 → 안내 메시지
+  if (!w && state.mode === "study" && state.hideLearned && getAllWords().length > 0) {
+    html += `<div class="card-area" style="justify-content:center;text-align:center">
+      <div style="font-size:36px;margin-bottom:12px">🎉</div>
+      <div style="font-size:16px;color:var(--text);font-weight:500">모든 단어를 외웠어요!</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:8px">설정에서 '외운 단어 숨기기'를 끄면<br>전체 단어를 다시 볼 수 있어요</div>
+    </div>`;
   }
 
   // Card
@@ -1086,6 +1108,13 @@ function render() {
             <span class="settings-unit">초</span>
           </div>
         </div>
+        <div class="settings-row">
+          <span class="settings-label">외운 단어 숨기기</span>
+          <div class="settings-value">
+            <button style="background:${state.hideLearned?'var(--success)':'var(--day-inactive)'};color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
+              onclick="toggleHideLearned()">${state.hideLearned?'ON':'OFF'}</button>
+          </div>
+        </div>
         <div style="font-size:13px;color:var(--muted);padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,.06)">글씨 크기</div>
         <div class="settings-row">
           <span class="settings-label">메인 (한자/가나)</span>
@@ -1212,12 +1241,30 @@ function toggleExample() {
   localStorage.setItem("jp-show-example", state.showExample);
   render();
 }
+function toggleHideLearned() {
+  state.hideLearned = !state.hideLearned;
+  localStorage.setItem("jp-hide-learned", state.hideLearned);
+  // idx 보정: 필터링된 리스트에 맞게
+  if (state.hideLearned && state.mode === "study") {
+    const visible = getWords();
+    if (state.idx >= visible.length) state.idx = Math.max(0, visible.length - 1);
+  }
+  render();
+}
 function toggleBm() {
   const w = getCurrent(); if (!w) return;
   const key = bmKey(w);
-  if (state.bookmarks[key]) { delete state.bookmarks[key]; }
+  const wasLearned = !!state.bookmarks[key];
+  if (wasLearned) { delete state.bookmarks[key]; }
   else { state.bookmarks[key] = { day:state.day, h:w.h, r:w.r, m:w.m, cnt:1 }; }
-  saveBookmarks(); render();
+  saveBookmarks();
+  // 외운 단어 숨기기 ON 상태에서 외운 체크하면 → 다음 카드로 이동 (or idx 보정)
+  if (state.hideLearned && !wasLearned && state.mode === "study") {
+    const visible = getWords();
+    if (visible.length === 0) { state.idx = 0; }
+    else if (state.idx >= visible.length) { state.idx = visible.length - 1; }
+  }
+  render();
 }
 function cycleSpeed() {
   const speeds = [0.7, 0.85, 1.0, 1.2, 1.5];
