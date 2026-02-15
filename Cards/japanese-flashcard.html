@@ -404,6 +404,7 @@ function startListening() {
   }
   state.listenWords = all; state.listenIdx = 0;
   state.mode = "listening"; state.showMeaning = false;
+  pushMode("listening");
   stopAuto(); render();
   setTimeout(() => speakOnce(), 300);
 }
@@ -699,6 +700,7 @@ function startTest() {
   }
   state.mode = "test"; state.testWords = all; state.testIdx = 0;
   state.testRevealed = false; state.testScore = { correct:0, wrong:0 };
+  pushMode("test");
   stopAuto(); render();
 }
 
@@ -1185,13 +1187,31 @@ function render() {
   }
 }
 
+// === HISTORY (안드로이드 뒤로가기 지원) ===
+function pushMode(mode) { history.pushState({ mode }, ""); }
+let skipPopstate = false;
+window.addEventListener("popstate", (e) => {
+  if (skipPopstate) { skipPopstate = false; return; }
+  // 설정 패널 열려있으면 먼저 닫기 (히스토리 복원)
+  if (state.showSettings) {
+    history.pushState(e.state, "");
+    state.showSettings = false; render(); return;
+  }
+  const target = e.state?.mode || "categories";
+  stopAuto();
+  state.mode = target;
+  render();
+});
+// 초기 상태 등록
+history.replaceState({ mode: "categories" }, "");
+
 // === ACTIONS ===
-function selectDay(d) { stopAuto(); state.day = d; state.idx = 0; state.mode = "study"; render(); }
-function openDay(d) { state.day = d; state.idx = 0; state.mode = "study"; render(); }
-function openCategory(ci) { state.catIdx = ci; state.mode = "menu"; render(); }
-function goCategories() { stopAuto(); state.mode = "categories"; render(); }
-function goMenu() { stopAuto(); state.mode = "menu"; render(); }
-function backToStudy() { stopAuto(); state.mode = "study"; render(); }
+function selectDay(d) { stopAuto(); state.day = d; state.idx = 0; state.mode = "study"; pushMode("study"); render(); }
+function openDay(d) { state.day = d; state.idx = 0; state.mode = "study"; pushMode("study"); render(); }
+function openCategory(ci) { state.catIdx = ci; state.mode = "menu"; pushMode("menu"); render(); }
+function goCategories() { stopAuto(); state.mode = "categories"; skipPopstate = true; history.back(); render(); }
+function goMenu() { stopAuto(); state.mode = "menu"; skipPopstate = true; history.back(); render(); }
+function backToStudy() { stopAuto(); state.mode = "study"; skipPopstate = true; history.back(); render(); }
 function toggleMeaning() { state.showMeaning = !state.showMeaning; render(); }
 function toggleSettings() { state.showSettings = !state.showSettings; render(); }
 function closeSettings(e) { if (e.target === e.currentTarget) { state.showSettings = false; render(); } }
