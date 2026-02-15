@@ -552,10 +552,10 @@ function updateMediaSession() {
 // === 로컬 MP3 오디오 시스템 (백그라운드 재생 핵심) ===
 // 사전 생성된 MP3 파일을 <audio> 요소로 재생 → 화면 꺼져도 재생 유지
 let audioManifest = null;
-fetch('../audio/manifest.json')
+const manifestReady = fetch('../audio/manifest.json')
   .then(r => r.json())
-  .then(m => { audioManifest = m; console.log('Audio manifest loaded:', Object.keys(m.ja || {}).length, 'ja,', Object.keys(m.ko || {}).length, 'ko'); })
-  .catch(() => { console.log('Audio manifest not found, using speechSynthesis fallback'); });
+  .then(m => { audioManifest = m; })
+  .catch(() => {});
 
 function getLocalAudioUrl(text, lang) {
   if (!audioManifest || !audioManifest[lang]) return null;
@@ -591,20 +591,24 @@ function speakGoogleTTS(text, cb) {
     else if (cb) cb();
   };
 
-  ttsAudio.onended = () => onDone(false);
-  ttsAudio.onerror = () => onDone(true);
-  ttsAudio.loop = false;
-  ttsAudio.volume = 1.0;
+  const playMp3 = () => {
+    ttsAudio.onended = () => onDone(false);
+    ttsAudio.onerror = () => onDone(true);
+    ttsAudio.loop = false;
+    ttsAudio.volume = 1.0;
+    const localUrl = getLocalAudioUrl(text, 'ja');
+    if (localUrl) {
+      ttsAudio.src = localUrl;
+      ttsAudio.playbackRate = state.speed;
+      ttsAudio.play().catch(() => onDone(true));
+    } else {
+      onDone(true);
+    }
+  };
 
-  // 로컬 MP3 우선 사용 (백그라운드 재생 가능)
-  const localUrl = getLocalAudioUrl(text, 'ja');
-  if (localUrl) {
-    ttsAudio.src = localUrl;
-    ttsAudio.playbackRate = state.speed;
-    ttsAudio.play().catch(() => onDone(true));
-  } else {
-    onDone(true);
-  }
+  // 매니페스트 로드 대기 후 재생
+  if (audioManifest) playMp3();
+  else manifestReady.then(playMp3);
 }
 
 // SpeechSynthesis (포그라운드 폴백 전용)
@@ -651,20 +655,24 @@ function speakKo(text, cb) {
       speakLocalKo(clean, cb);
     } else if (cb) cb();
   };
-  ttsAudio.onended = () => onDone(false);
-  ttsAudio.onerror = () => onDone(true);
-  ttsAudio.loop = false;
-  ttsAudio.volume = 1.0;
-  ttsAudio.playbackRate = 1.0;
 
-  // 로컬 MP3 우선 사용
-  const localUrl = getLocalAudioUrl(clean, 'ko');
-  if (localUrl) {
-    ttsAudio.src = localUrl;
-    ttsAudio.play().catch(() => onDone(true));
-  } else {
-    onDone(true);
-  }
+  const playMp3 = () => {
+    ttsAudio.onended = () => onDone(false);
+    ttsAudio.onerror = () => onDone(true);
+    ttsAudio.loop = false;
+    ttsAudio.volume = 1.0;
+    ttsAudio.playbackRate = 1.0;
+    const localUrl = getLocalAudioUrl(clean, 'ko');
+    if (localUrl) {
+      ttsAudio.src = localUrl;
+      ttsAudio.play().catch(() => onDone(true));
+    } else {
+      onDone(true);
+    }
+  };
+
+  if (audioManifest) playMp3();
+  else manifestReady.then(playMp3);
 }
 
 // SpeechSynthesis 한국어 폴백 (포그라운드 전용)
