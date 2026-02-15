@@ -300,6 +300,8 @@ body {
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
+const APP_VERSION = "v26.02.15.14:00:00";
+
 // === DATA ===
 // 각 단어 파일의 데이터를 WORD_DATA로 통합 (카테고리별 오프셋 적용)
 const WORD_DATA = {};
@@ -823,7 +825,7 @@ function render() {
   if (state.mode === "categories") {
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
-        <div class="menu-header-title">日本語 단어장</div>
+        <div class="menu-header-title">日本語 단어장 <span style="font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0">${APP_VERSION}</span></div>
         <div class="menu-header-sub">카테고리를 선택하세요 · 총 ${Object.values(WORD_DATA).reduce((s,d)=>s+d.words.length,0)}단어</div>
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>

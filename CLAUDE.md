@@ -74,6 +74,13 @@ TDLs/
 - **절대 경로 금지**, 프로젝트 루트 기준 상대 경로 사용
 - **백틱 금지**: 파일 참조는 markdown link 형식
 
+## 버전 표시 규칙
+
+- 매 커밋 시 `APP_VERSION` 상수를 현재 시간으로 업데이트
+- 형식: `"vYY.MM.DD.HH:MM:SS"` (예: `"v26.02.15.14:00:00"`)
+- 위치: [Cards/japanese-flashcard.html](Cards/japanese-flashcard.html) 상단 `const APP_VERSION = "..."` 라인
+- 카테고리 화면 헤더에 표시됨
+
 ## Git 커밋 정책
 
 작업 완료 후 자동으로 커밋을 수행합니다:
