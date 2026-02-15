@@ -19,9 +19,9 @@
   --text: #eaeaea; --muted: #8892b0; --success: #00d2d3;
   --day-active: #e94560; --day-inactive: #233554;
 }
-html { height:100vh; height:100dvh; overflow:hidden; overscroll-behavior:none; }
+html { height:var(--app-h,100vh); overflow:hidden; overscroll-behavior:none; }
 body {
-  height:100vh; height:100dvh; background:linear-gradient(135deg,var(--bg) 0%,#16213e 50%,#0f3460 100%);
+  height:var(--app-h,100vh); background:linear-gradient(135deg,var(--bg) 0%,#16213e 50%,#0f3460 100%);
   font-family:'Noto Sans KR',sans-serif; color:var(--text);
   display:flex; flex-direction:column; align-items:center;
   overflow:hidden; user-select:none; overscroll-behavior:none;
@@ -300,7 +300,16 @@ body {
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
-const APP_VERSION = "v26.02.15.14:00:00";
+const APP_VERSION = "v26.02.15.14:44:00";
+
+// === 안드로이드 네비게이션 바 대응 ===
+// window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
+function setAppHeight() {
+  document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
+}
+setAppHeight();
+window.addEventListener('resize', setAppHeight);
+window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 200));
 
 // === DATA ===
 // 각 단어 파일의 데이터를 WORD_DATA로 통합 (카테고리별 오프셋 적용)
