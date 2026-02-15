@@ -460,6 +460,7 @@ const ttsAudio = new Audio();
 let ttsPlaying = false;
 let speakSeq = 0;
 let keepAliveTimer = null;
+let currentDelayUrl = null;
 
 // Web Audio API - 무음 오실레이터로 오디오 스레드만 유지
 // 중요: audio 엘리먼트를 AudioContext에 연결하지 않음!
@@ -495,20 +496,17 @@ function resumeSilentLoop() {
 // ttsAudio 사용 - bgAudio는 무음 루프 유지
 function playDelayAudio(delayMs, callback) {
   const delaySec = Math.max(0.1, delayMs / 1000);
+  if (currentDelayUrl) { URL.revokeObjectURL(currentDelayUrl); currentDelayUrl = null; }
   const url = createSilentWav(delaySec);
-  ttsAudio.onended = () => {
-    URL.revokeObjectURL(url);
-    if (callback) callback();
-  };
-  ttsAudio.onerror = () => {
-    URL.revokeObjectURL(url);
-    if (callback) callback();
-  };
+  currentDelayUrl = url;
+  const cleanup = () => { if (currentDelayUrl === url) { URL.revokeObjectURL(url); currentDelayUrl = null; } };
+  ttsAudio.onended = () => { cleanup(); if (callback) callback(); };
+  ttsAudio.onerror = () => { cleanup(); if (callback) callback(); };
   ttsAudio.loop = false;
   ttsAudio.volume = 0.01;
   ttsAudio.playbackRate = 1.0;
   ttsAudio.src = url;
-  ttsAudio.play().catch(() => { if (callback) callback(); });
+  ttsAudio.play().catch(() => { cleanup(); if (callback) callback(); });
 }
 
 function startBackgroundAudio() {
@@ -560,6 +558,8 @@ function cancelSpeak() {
   ttsAudio.onended = null;
   ttsAudio.onerror = null;
   ttsPlaying = false;
+  state.exSpeaking = false;
+  if (currentDelayUrl) { URL.revokeObjectURL(currentDelayUrl); currentDelayUrl = null; }
 }
 
 // 같은 bgAudio 엘리먼트로 Google TTS 재생 → 오디오 세션 끊기지 않음
@@ -1278,11 +1278,16 @@ function toggleBm() {
   if (wasLearned) { delete state.bookmarks[key]; }
   else { state.bookmarks[key] = { day:state.day, h:w.h, r:w.r, m:w.m, cnt:1 }; }
   saveBookmarks();
-  // 외운 단어 숨기기 ON 상태에서 외운 체크하면 → 다음 카드로 이동 (or idx 보정)
+  // 외운 단어 숨기기 ON 상태에서 외운 체크하면 → idx 보정 + autoPlay 리셋
   if (state.hideLearned && !wasLearned && state.mode === "study") {
+    const wasPlaying = state.playing;
+    if (wasPlaying) { playId++; cancelSpeak(); }
     const visible = getWords();
-    if (visible.length === 0) { state.idx = 0; }
-    else if (state.idx >= visible.length) { state.idx = visible.length - 1; }
+    if (visible.length === 0) { state.idx = 0; if (wasPlaying) stopAuto(); }
+    else {
+      if (state.idx >= visible.length) { state.idx = visible.length - 1; }
+      if (wasPlaying) { state.playCount = 0; autoPlay(0); }
+    }
   }
   render();
 }
