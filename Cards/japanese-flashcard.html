@@ -595,15 +595,14 @@ function speakGoogleTTS(text, cb) {
   ttsAudio.onerror = () => onDone(true);
   ttsAudio.loop = false;
   ttsAudio.volume = 1.0;
-  ttsAudio.playbackRate = state.speed;
 
   // 로컬 MP3 우선 사용 (백그라운드 재생 가능)
   const localUrl = getLocalAudioUrl(text, 'ja');
   if (localUrl) {
     ttsAudio.src = localUrl;
+    ttsAudio.playbackRate = state.speed;
     ttsAudio.play().catch(() => onDone(true));
   } else {
-    // 로컬 MP3 없으면 speechSynthesis 폴백
     onDone(true);
   }
 }
