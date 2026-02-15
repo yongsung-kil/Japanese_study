@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
+<title>Audio Background Test</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#1a1a2e; color:#eaeaea; font-family:sans-serif;
+  padding:20px; max-width:480px; margin:0 auto;
+}
+h2 { color:#e94560; margin-bottom:12px; }
+.card {
+  background:#16213e; border-radius:12px; padding:16px; margin-bottom:12px;
+  border:1px solid rgba(233,69,96,.15);
+}
+.card h3 { font-size:14px; color:#8892b0; margin-bottom:8px; }
+.word { font-size:48px; text-align:center; padding:20px 0; font-family:'Noto Sans JP',sans-serif; }
+.info { font-size:13px; color:#8892b0; text-align:center; margin:4px 0; }
+.controls { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+button {
+  background:#e94560; border:none; border-radius:8px; padding:10px 16px;
+  color:#fff; font-size:14px; cursor:pointer; font-weight:700;
+}
+button.off { background:#233554; }
+button.small { font-size:12px; padding:6px 12px; }
+.log {
+  background:#0f3460; border-radius:8px; padding:12px; margin-top:12px;
+  font-size:11px; color:#8892b0; max-height:300px; overflow-y:auto;
+  font-family:monospace; white-space:pre-wrap; word-break:break-all;
+}
+select, input {
+  background:#233554; color:#eaeaea; border:1px solid #8892b0;
+  border-radius:6px; padding:6px 8px; font-size:14px;
+}
+.row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+.label { font-size:13px; color:#8892b0; min-width:80px; }
+.status { font-size:16px; font-weight:700; padding:8px; text-align:center; border-radius:8px; }
+.status.playing { background:rgba(0,210,211,.15); color:#00d2d3; }
+.status.stopped { background:rgba(233,69,96,.15); color:#e94560; }
+</style>
+</head>
+<body>
+
+<h2>Audio Background Test</h2>
+
+<div class="card">
+  <h3>Current Word</h3>
+  <div class="word" id="wordDisplay">-</div>
+  <div class="info" id="wordInfo">-</div>
+  <div class="status stopped" id="statusBar">STOPPED</div>
+</div>
+
+<div class="card">
+  <h3>Controls</h3>
+  <div class="controls">
+    <button onclick="togglePlay()" id="playBtn">▶ Play</button>
+    <button onclick="playPrev()" class="small">← Prev</button>
+    <button onclick="playNext()" class="small">Next →</button>
+    <button onclick="speakCurrent()" class="small">🔊 Once</button>
+  </div>
+  <div class="row">
+    <span class="label">Method:</span>
+    <select id="methodSelect" onchange="currentMethod=this.value;addLog('Method: '+this.value)">
+      <option value="blob">A: Blob Prefetch</option>
+      <option value="direct">B: Direct URL</option>
+      <option value="single">C: Single Audio</option>
+    </select>
+  </div>
+  <div class="row">
+    <span class="label">Repeat:</span>
+    <input type="number" id="repeatInput" value="3" min="1" max="10" style="width:60px">
+    <span class="label">Delay:</span>
+    <input type="number" id="delayInput" value="2.0" min="0" max="10" step="0.5" style="width:60px">
+    <span style="font-size:12px;color:#8892b0">sec</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Debug Log <button class="small" onclick="clearLog()" style="background:#233554;float:right">Clear</button></h3>
+  <div class="log" id="logArea">Ready.\n</div>
+</div>
+
+<script>
+// === TEST WORDS ===
+const WORDS = [
+  { h: "おはよう", r: "ohayou", m: "좋은 아침" },
+  { h: "こんにちは", r: "konnichiwa", m: "안녕하세요" },
+  { h: "ありがとう", r: "arigatou", m: "감사합니다" },
+  { h: "すみません", r: "sumimasen", m: "죄송합니다" },
+  { h: "さようなら", r: "sayounara", m: "안녕히 가세요" },
+  { h: "いただきます", r: "itadakimasu", m: "잘 먹겠습니다" },
+  { h: "おやすみ", r: "oyasumi", m: "잘 자" },
+  { h: "はじめまして", r: "hajimemashite", m: "처음 뵙겠습니다" },
+  { h: "おねがいします", r: "onegaishimasu", m: "부탁합니다" },
+  { h: "だいじょうぶ", r: "daijoubu", m: "괜찮아" },
+];
+
+// === STATE ===
+let idx = 0;
+let playing = false;
+let playCount = 0;
+let playId = 0;
+let currentMethod = 'blob';
+let ttsBlobs = {};
+let speakSeq = 0;
+
+// === AUDIO ELEMENTS ===
+const bgAudio = new Audio();
+const ttsAudio = new Audio();
+// Method C: single audio element
+const singleAudio = new Audio();
+
+// === LOGGING ===
+function addLog(msg) {
+  const now = new Date();
+  const ts = now.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const vis = document.visibilityState === 'visible' ? '👁' : '🌙';
+  const el = document.getElementById('logArea');
+  el.textContent += `[${ts}] ${vis} ${msg}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() { document.getElementById('logArea').textContent = ''; }
+
+// === SILENT WAV ===
+function createSilentWav(seconds) {
+  const rate = 8000, samples = rate * seconds;
+  const buf = new ArrayBuffer(44 + samples);
+  const v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36+samples, true); w(8,'WAVE');
+  w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
+  v.setUint16(22,1,true); v.setUint32(24,rate,true);
+  v.setUint32(28,rate,true); v.setUint16(32,1,true);
+  v.setUint16(34,8,true); w(36,'data'); v.setUint32(40,samples,true);
+  for (let i = 0; i < samples; i++) v.setUint8(44+i, 128);
+  return URL.createObjectURL(new Blob([buf], {type:'audio/wav'}));
+}
+const SILENT_URL = createSilentWav(2);
+
+// === WAKE LOCK ===
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      addLog('WakeLock acquired');
+    }
+  } catch(e) { addLog('WakeLock failed: ' + e.message); }
+}
+
+// === MEDIA SESSION ===
+function updateMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  const w = WORDS[idx];
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: w.h + ' - ' + w.m, artist: w.r, album: 'Audio Test',
+  });
+  navigator.mediaSession.setActionHandler('play', () => { if (!playing) togglePlay(); });
+  navigator.mediaSession.setActionHandler('pause', () => { if (playing) togglePlay(); });
+  navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+  navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
+}
+
+// === BACKGROUND AUDIO (silent loop) ===
+function startBgLoop() {
+  bgAudio.loop = true;
+  bgAudio.volume = 0.01;
+  bgAudio.src = SILENT_URL;
+  bgAudio.play().catch(e => addLog('bgAudio.play fail: ' + e.message));
+}
+function stopBgLoop() {
+  bgAudio.pause();
+}
+
+// === AUDIO DELAY (uses ttsAudio or singleAudio) ===
+function playDelay(ms, cb, audioEl) {
+  const el = audioEl || ttsAudio;
+  const sec = Math.max(0.1, ms / 1000);
+  const url = createSilentWav(sec);
+  el.onended = () => { URL.revokeObjectURL(url); if (cb) cb(); };
+  el.onerror = () => { URL.revokeObjectURL(url); if (cb) cb(); };
+  el.loop = false;
+  el.volume = 0.01;
+  el.playbackRate = 1.0;
+  el.src = url;
+  el.play().catch(() => { URL.revokeObjectURL(url); if (cb) cb(); });
+}
+
+// === TTS METHODS ===
+
+// Method A: Blob Prefetch
+function prefetchTTS(text) {
+  if (!text || ttsBlobs[text]) return;
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+  fetch(url).then(r => r.blob()).then(blob => {
+    ttsBlobs[text] = URL.createObjectURL(blob);
+    addLog('Prefetched: ' + text);
+  }).catch(e => addLog('Prefetch fail: ' + text));
+}
+
+function speakBlob(text, cb) {
+  const mySeq = ++speakSeq;
+  let done = false;
+  const onDone = () => {
+    if (done || mySeq !== speakSeq) return;
+    done = true;
+    addLog('TTS done (blob method)');
+    if (cb) cb();
+  };
+
+  // Prefetch next word
+  const nextW = WORDS[idx + 1];
+  if (nextW) prefetchTTS(nextW.h);
+
+  ttsAudio.onended = onDone;
+  ttsAudio.onerror = () => { addLog('TTS error (blob)'); onDone(); };
+  ttsAudio.loop = false;
+  ttsAudio.volume = 1.0;
+  ttsAudio.playbackRate = 1.0;
+
+  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+
+  if (ttsBlobs[text]) {
+    addLog('Playing from BLOB cache: ' + text);
+    ttsAudio.src = ttsBlobs[text];
+    ttsAudio.play().catch(() => { addLog('Blob play fail'); onDone(); });
+  } else {
+    addLog('Playing DIRECT URL: ' + text);
+    ttsAudio.src = directUrl;
+    ttsAudio.play().catch(() => { addLog('Direct play fail'); onDone(); });
+    // Cache for repeat
+    fetch(directUrl).then(r => r.blob()).then(blob => {
+      if (!ttsBlobs[text]) {
+        ttsBlobs[text] = URL.createObjectURL(blob);
+        addLog('Cached after play: ' + text);
+      }
+    }).catch(() => {});
+  }
+}
+
+// Method B: Direct URL (no caching)
+function speakDirect(text, cb) {
+  const mySeq = ++speakSeq;
+  let done = false;
+  const onDone = () => {
+    if (done || mySeq !== speakSeq) return;
+    done = true;
+    addLog('TTS done (direct method)');
+    if (cb) cb();
+  };
+  ttsAudio.onended = onDone;
+  ttsAudio.onerror = () => { addLog('TTS error (direct)'); onDone(); };
+  ttsAudio.loop = false;
+  ttsAudio.volume = 1.0;
+  ttsAudio.playbackRate = 1.0;
+  addLog('Playing DIRECT: ' + text);
+  ttsAudio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+  ttsAudio.play().catch(() => { addLog('Direct play fail'); onDone(); });
+}
+
+// Method C: Single audio element (TTS + delay on same element, no bgAudio)
+function speakSingle(text, cb) {
+  const mySeq = ++speakSeq;
+  let done = false;
+  const onDone = () => {
+    if (done || mySeq !== speakSeq) return;
+    done = true;
+    addLog('TTS done (single method)');
+    if (cb) cb();
+  };
+
+  // Prefetch next word
+  const nextW = WORDS[idx + 1];
+  if (nextW) prefetchTTS(nextW.h);
+
+  singleAudio.onended = onDone;
+  singleAudio.onerror = () => { addLog('TTS error (single)'); onDone(); };
+  singleAudio.loop = false;
+  singleAudio.volume = 1.0;
+  singleAudio.playbackRate = 1.0;
+
+  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+
+  if (ttsBlobs[text]) {
+    addLog('Single BLOB: ' + text);
+    singleAudio.src = ttsBlobs[text];
+    singleAudio.play().catch(() => { addLog('Single blob fail'); onDone(); });
+  } else {
+    addLog('Single DIRECT: ' + text);
+    singleAudio.src = directUrl;
+    singleAudio.play().catch(() => { addLog('Single direct fail'); onDone(); });
+    fetch(directUrl).then(r => r.blob()).then(blob => {
+      if (!ttsBlobs[text]) {
+        ttsBlobs[text] = URL.createObjectURL(blob);
+        addLog('Single cached: ' + text);
+      }
+    }).catch(() => {});
+  }
+}
+
+// === SPEAK WRAPPER ===
+function speakWord(text, cb) {
+  if (currentMethod === 'blob') speakBlob(text, cb);
+  else if (currentMethod === 'direct') speakDirect(text, cb);
+  else if (currentMethod === 'single') speakSingle(text, cb);
+}
+
+// === AUTO PLAY ===
+function autoPlay(count) {
+  const myId = playId;
+  if (!playing) return;
+
+  const repeatCount = parseInt(document.getElementById('repeatInput').value) || 3;
+  const delaySec = parseFloat(document.getElementById('delayInput').value) || 2.0;
+
+  if (count >= repeatCount) {
+    playCount = 0;
+    addLog(`--- Word ${idx+1}/${WORDS.length} done, moving next ---`);
+    const audioEl = currentMethod === 'single' ? singleAudio : ttsAudio;
+    playDelay(400, () => {
+      if (playId !== myId || !playing) return;
+      if (idx < WORDS.length - 1) {
+        idx++;
+        updateUI();
+        autoPlay(0);
+      } else {
+        addLog('=== ALL WORDS DONE ===');
+        stopPlay();
+        updateUI();
+      }
+    }, audioEl);
+    return;
+  }
+
+  playCount = count + 1;
+  updateUI();
+  updateMediaSession();
+
+  const w = WORDS[idx];
+  addLog(`Play "${w.h}" (${count+1}/${repeatCount})`);
+
+  speakWord(w.h, () => {
+    if (!playing || playId !== myId) return;
+    addLog(`Delay ${delaySec}s...`);
+    const audioEl = currentMethod === 'single' ? singleAudio : ttsAudio;
+    playDelay(delaySec * 1000, () => {
+      if (!playing || playId !== myId) return;
+      autoPlay(count + 1);
+    }, audioEl);
+  });
+}
+
+function togglePlay() {
+  if (playing) { stopPlay(); }
+  else { startPlay(); }
+  updateUI();
+}
+
+function startPlay() {
+  playing = true;
+  addLog('=== START ===  method=' + currentMethod);
+  if (currentMethod !== 'single') startBgLoop();
+  requestWakeLock();
+  updateMediaSession();
+  // Prefetch current word
+  prefetchTTS(WORDS[idx].h);
+  autoPlay(0);
+}
+
+function stopPlay() {
+  playing = false;
+  playCount = 0;
+  playId++;
+  speakSeq++;
+  ttsAudio.pause(); ttsAudio.onended = null; ttsAudio.onerror = null;
+  singleAudio.pause(); singleAudio.onended = null; singleAudio.onerror = null;
+  window.speechSynthesis?.cancel();
+  stopBgLoop();
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  // Clear cache
+  Object.values(ttsBlobs).forEach(u => URL.revokeObjectURL(u));
+  ttsBlobs = {};
+  addLog('=== STOPPED ===');
+}
+
+function playNext() {
+  if (idx < WORDS.length - 1) {
+    const wasPlaying = playing;
+    if (wasPlaying) { playId++; speakSeq++; ttsAudio.pause(); singleAudio.pause(); }
+    idx++;
+    playCount = 0;
+    updateUI();
+    if (wasPlaying) autoPlay(0);
+  }
+}
+
+function playPrev() {
+  if (idx > 0) {
+    const wasPlaying = playing;
+    if (wasPlaying) { playId++; speakSeq++; ttsAudio.pause(); singleAudio.pause(); }
+    idx--;
+    playCount = 0;
+    updateUI();
+    if (wasPlaying) autoPlay(0);
+  }
+}
+
+function speakCurrent() {
+  const w = WORDS[idx];
+  addLog('Single speak: ' + w.h);
+  speakWord(w.h, () => addLog('Single speak done'));
+}
+
+// === VISIBILITY CHANGE ===
+document.addEventListener('visibilitychange', () => {
+  addLog('Visibility: ' + document.visibilityState);
+  if (document.visibilityState === 'visible' && playing) {
+    requestWakeLock();
+  }
+});
+
+// === UI UPDATE ===
+function updateUI() {
+  const w = WORDS[idx];
+  const repeatCount = parseInt(document.getElementById('repeatInput').value) || 3;
+  document.getElementById('wordDisplay').textContent = w.h;
+  document.getElementById('wordInfo').textContent =
+    `${w.r} · ${w.m} · ${idx+1}/${WORDS.length} · repeat ${playCount}/${repeatCount}`;
+
+  const statusBar = document.getElementById('statusBar');
+  const playBtn = document.getElementById('playBtn');
+  if (playing) {
+    statusBar.className = 'status playing';
+    statusBar.textContent = `PLAYING (${currentMethod}) - ${w.h}`;
+    playBtn.textContent = '⏸ Pause';
+  } else {
+    statusBar.className = 'status stopped';
+    statusBar.textContent = 'STOPPED';
+    playBtn.textContent = '▶ Play';
+  }
+}
+
+// Init
+updateUI();
+addLog('Test page loaded. Select method and press Play.');
+addLog('Turn off screen while playing to test background audio.');
+</script>
+</body>
+</html>
