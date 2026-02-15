@@ -299,7 +299,7 @@ body {
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
-const APP_VERSION = "v26.02.15.16:55:00";
+const APP_VERSION = "v26.02.15.17:05:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -599,30 +599,35 @@ function speakGoogleTTS(text, cb) {
   const mySeq = ++speakSeq;
   let done = false;
   ttsPlaying = true;
-  const onDone = (fallback) => {
+  const onDone = () => {
     if (done || mySeq !== speakSeq) return;
     done = true;
     ttsPlaying = false;
-    if (fallback && document.visibilityState === 'visible') speakLocal(text, cb);
-    else if (cb) cb();
+    if (cb) cb();
   };
 
+  // 화면 켜짐: speechSynthesis (고음질)
+  // 화면 꺼짐: 로컬 MP3 (백그라운드 재생 가능)
+  if (document.visibilityState === 'visible') {
+    speakLocal(text, cb);
+    return;
+  }
+
   const playMp3 = () => {
-    ttsAudio.onended = () => onDone(false);
-    ttsAudio.onerror = () => onDone(true);
+    ttsAudio.onended = onDone;
+    ttsAudio.onerror = onDone;
     ttsAudio.loop = false;
     ttsAudio.volume = 1.0;
     const localUrl = getLocalAudioUrl(text, 'ja');
     if (localUrl) {
       ttsAudio.src = localUrl;
       ttsAudio.playbackRate = state.speed;
-      ttsAudio.play().catch(() => onDone(true));
+      ttsAudio.play().catch(() => onDone());
     } else {
-      onDone(true);
+      onDone();
     }
   };
 
-  // 매니페스트 로드 대기 후 재생
   if (audioManifest) playMp3();
   else manifestReady.then(playMp3);
 }
@@ -656,34 +661,39 @@ function speak(text, cb) {
   speakGoogleTTS(text, safeCb);
 }
 
-// 한국어 TTS (로컬 MP3 우선) + SpeechSynthesis 폴백
+// 한국어 TTS: 화면 켜짐→speechSynthesis / 화면 꺼짐→MP3
 function speakKo(text, cb) {
   cancelSpeak();
   const mySeq = ++speakSeq;
   let done = false;
   ttsPlaying = true;
   const clean = text.replace(/^\[.*?\]\s*/, '');
-  const onDone = (fallback) => {
+  const onDone = () => {
     if (done || mySeq !== speakSeq) return;
     done = true;
     ttsPlaying = false;
-    if (fallback && document.visibilityState === 'visible') {
-      speakLocalKo(clean, cb);
-    } else if (cb) cb();
+    if (cb) cb();
   };
 
+  // 화면 켜짐: speechSynthesis (고음질)
+  if (document.visibilityState === 'visible') {
+    speakLocalKo(clean, cb);
+    return;
+  }
+
+  // 화면 꺼짐: 로컬 MP3 (백그라운드 재생)
   const playMp3 = () => {
-    ttsAudio.onended = () => onDone(false);
-    ttsAudio.onerror = () => onDone(true);
+    ttsAudio.onended = onDone;
+    ttsAudio.onerror = onDone;
     ttsAudio.loop = false;
     ttsAudio.volume = 1.0;
     const localUrl = getLocalAudioUrl(clean, 'ko');
     if (localUrl) {
       ttsAudio.src = localUrl;
       ttsAudio.playbackRate = state.speed;
-      ttsAudio.play().catch(() => onDone(true));
+      ttsAudio.play().catch(() => onDone());
     } else {
-      onDone(true);
+      onDone();
     }
   };
 
