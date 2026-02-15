@@ -45,7 +45,7 @@ select, input {
 </head>
 <body>
 
-<h2>Audio Background Test</h2>
+<h2>Audio Background Test v2</h2>
 
 <div class="card">
   <h3>Current Word</h3>
@@ -62,12 +62,17 @@ select, input {
     <button onclick="playNext()" class="small">Next →</button>
     <button onclick="speakCurrent()" class="small">🔊 Once</button>
   </div>
+  <div class="controls">
+    <button onclick="testBeep()" class="small" style="background:#0f9b58">🔔 Beep Test</button>
+    <button onclick="testSpeechSynth()" class="small" style="background:#4285f4">🗣 SpeechSynth Test</button>
+    <button onclick="testGoogleTTS()" class="small" style="background:#f4b400;color:#000">🌐 Google TTS Test</button>
+  </div>
   <div class="row">
     <span class="label">Method:</span>
-    <select id="methodSelect" onchange="currentMethod=this.value;addLog('Method: '+this.value)">
-      <option value="blob">A: Blob Prefetch</option>
-      <option value="direct">B: Direct URL</option>
-      <option value="single">C: Single Audio</option>
+    <select id="methodSelect" onchange="currentMethod=this.value;addLog('Method → '+this.value)">
+      <option value="synth">A: SpeechSynthesis (브라우저 내장)</option>
+      <option value="gtts">B: Google TTS (audio 요소)</option>
+      <option value="beep">C: Beep (오실레이터, 네트워크 없음)</option>
     </select>
   </div>
   <div class="row">
@@ -104,15 +109,12 @@ let idx = 0;
 let playing = false;
 let playCount = 0;
 let playId = 0;
-let currentMethod = 'blob';
-let ttsBlobs = {};
+let currentMethod = 'synth';
 let speakSeq = 0;
 
 // === AUDIO ELEMENTS ===
-const bgAudio = new Audio();
 const ttsAudio = new Audio();
-// Method C: single audio element
-const singleAudio = new Audio();
+const bgAudio = new Audio();
 
 // === LOGGING ===
 function addLog(msg) {
@@ -125,9 +127,9 @@ function addLog(msg) {
 }
 function clearLog() { document.getElementById('logArea').textContent = ''; }
 
-// === SILENT WAV ===
+// === SILENT WAV (for delay between words) ===
 function createSilentWav(seconds) {
-  const rate = 8000, samples = rate * seconds;
+  const rate = 8000, samples = Math.floor(rate * seconds);
   const buf = new ArrayBuffer(44 + samples);
   const v = new DataView(buf);
   const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
@@ -139,7 +141,6 @@ function createSilentWav(seconds) {
   for (let i = 0; i < samples; i++) v.setUint8(44+i, 128);
   return URL.createObjectURL(new Blob([buf], {type:'audio/wav'}));
 }
-const SILENT_URL = createSilentWav(2);
 
 // === WAKE LOCK ===
 let wakeLock = null;
@@ -149,7 +150,7 @@ async function requestWakeLock() {
       wakeLock = await navigator.wakeLock.request('screen');
       addLog('WakeLock acquired');
     }
-  } catch(e) { addLog('WakeLock failed: ' + e.message); }
+  } catch(e) { addLog('WakeLock fail: ' + e.message); }
 }
 
 // === MEDIA SESSION ===
@@ -165,151 +166,179 @@ function updateMediaSession() {
   navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
 }
 
-// === BACKGROUND AUDIO (silent loop) ===
+// === BACKGROUND AUDIO (silent loop to keep media session alive) ===
 function startBgLoop() {
+  const url = createSilentWav(5);
   bgAudio.loop = true;
   bgAudio.volume = 0.01;
-  bgAudio.src = SILENT_URL;
-  bgAudio.play().catch(e => addLog('bgAudio.play fail: ' + e.message));
+  bgAudio.src = url;
+  bgAudio.play().then(() => addLog('bgAudio loop started'))
+    .catch(e => addLog('bgAudio fail: ' + e.message));
 }
-function stopBgLoop() {
-  bgAudio.pause();
-}
+function stopBgLoop() { bgAudio.pause(); }
 
-// === AUDIO DELAY (uses ttsAudio or singleAudio) ===
-function playDelay(ms, cb, audioEl) {
-  const el = audioEl || ttsAudio;
+// === AUDIO DELAY (silent wav instead of setTimeout) ===
+function playDelay(ms, cb) {
   const sec = Math.max(0.1, ms / 1000);
   const url = createSilentWav(sec);
-  el.onended = () => { URL.revokeObjectURL(url); if (cb) cb(); };
-  el.onerror = () => { URL.revokeObjectURL(url); if (cb) cb(); };
-  el.loop = false;
-  el.volume = 0.01;
-  el.playbackRate = 1.0;
-  el.src = url;
-  el.play().catch(() => { URL.revokeObjectURL(url); if (cb) cb(); });
+  ttsAudio.onended = () => { URL.revokeObjectURL(url); if (cb) cb(); };
+  ttsAudio.onerror = () => { URL.revokeObjectURL(url); if (cb) cb(); };
+  ttsAudio.loop = false;
+  ttsAudio.volume = 0.01;
+  ttsAudio.playbackRate = 1.0;
+  ttsAudio.src = url;
+  ttsAudio.play().catch(() => { URL.revokeObjectURL(url); if (cb) cb(); });
 }
 
+// ========================================
 // === TTS METHODS ===
+// ========================================
 
-// Method A: Blob Prefetch
-function prefetchTTS(text) {
-  if (!text || ttsBlobs[text]) return;
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
-  fetch(url).then(r => r.blob()).then(blob => {
-    ttsBlobs[text] = URL.createObjectURL(blob);
-    addLog('Prefetched: ' + text);
-  }).catch(e => addLog('Prefetch fail: ' + text));
-}
-
-function speakBlob(text, cb) {
-  const mySeq = ++speakSeq;
-  let done = false;
-  const onDone = () => {
-    if (done || mySeq !== speakSeq) return;
-    done = true;
-    addLog('TTS done (blob method)');
+// --- Method A: SpeechSynthesis (browser built-in) ---
+function speakSynth(text, cb) {
+  if (!window.speechSynthesis) {
+    addLog('speechSynthesis not available!');
     if (cb) cb();
-  };
-
-  // Prefetch next word
-  const nextW = WORDS[idx + 1];
-  if (nextW) prefetchTTS(nextW.h);
-
-  ttsAudio.onended = onDone;
-  ttsAudio.onerror = () => { addLog('TTS error (blob)'); onDone(); };
-  ttsAudio.loop = false;
-  ttsAudio.volume = 1.0;
-  ttsAudio.playbackRate = 1.0;
-
-  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
-
-  if (ttsBlobs[text]) {
-    addLog('Playing from BLOB cache: ' + text);
-    ttsAudio.src = ttsBlobs[text];
-    ttsAudio.play().catch(() => { addLog('Blob play fail'); onDone(); });
-  } else {
-    addLog('Playing DIRECT URL: ' + text);
-    ttsAudio.src = directUrl;
-    ttsAudio.play().catch(() => { addLog('Direct play fail'); onDone(); });
-    // Cache for repeat
-    fetch(directUrl).then(r => r.blob()).then(blob => {
-      if (!ttsBlobs[text]) {
-        ttsBlobs[text] = URL.createObjectURL(blob);
-        addLog('Cached after play: ' + text);
-      }
-    }).catch(() => {});
+    return;
   }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP';
+  u.rate = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const jpVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jpVoice) u.voice = jpVoice;
+  let done = false;
+  const finish = () => { if (done) return; done = true; addLog('synth done: ' + text); if (cb) cb(); };
+  u.onend = finish;
+  u.onerror = (e) => { addLog('synth error: ' + (e.error || 'unknown')); finish(); };
+  window.speechSynthesis.speak(u);
+  // Safety timeout
+  setTimeout(() => { if (!done && !window.speechSynthesis.speaking) finish(); }, 5000);
+  addLog('synth speaking: ' + text);
 }
 
-// Method B: Direct URL (no caching)
-function speakDirect(text, cb) {
+// --- Method B: Google TTS via <audio> element ---
+function speakGoogleTTS(text, cb) {
   const mySeq = ++speakSeq;
   let done = false;
-  const onDone = () => {
+  const onDone = (success) => {
     if (done || mySeq !== speakSeq) return;
     done = true;
-    addLog('TTS done (direct method)');
+    if (!success) {
+      addLog('Google TTS failed → speechSynthesis fallback');
+      speakSynth(text, cb);
+      return;
+    }
+    addLog('Google TTS done: ' + text);
     if (cb) cb();
   };
-  ttsAudio.onended = onDone;
-  ttsAudio.onerror = () => { addLog('TTS error (direct)'); onDone(); };
+
+  ttsAudio.onended = () => onDone(true);
+  ttsAudio.onerror = (e) => {
+    const code = ttsAudio.error ? ttsAudio.error.code : '?';
+    const msg = ttsAudio.error ? ttsAudio.error.message : 'unknown';
+    addLog(`Google TTS <audio> error: code=${code} msg=${msg}`);
+    onDone(false);
+  };
   ttsAudio.loop = false;
   ttsAudio.volume = 1.0;
   ttsAudio.playbackRate = 1.0;
-  addLog('Playing DIRECT: ' + text);
-  ttsAudio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
-  ttsAudio.play().catch(() => { addLog('Direct play fail'); onDone(); });
+
+  // Try client=gtx (client=tw-ob seems blocked)
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=gtx&q=${encodeURIComponent(text)}`;
+  addLog('Google TTS loading: ' + text);
+  ttsAudio.src = url;
+  ttsAudio.play()
+    .then(() => addLog('Google TTS play() OK'))
+    .catch(e => {
+      addLog('Google TTS play() rejected: ' + e.message);
+      onDone(false);
+    });
 }
 
-// Method C: Single audio element (TTS + delay on same element, no bgAudio)
-function speakSingle(text, cb) {
-  const mySeq = ++speakSeq;
-  let done = false;
-  const onDone = () => {
-    if (done || mySeq !== speakSeq) return;
-    done = true;
-    addLog('TTS done (single method)');
+// --- Method C: Oscillator Beep (no network, pure local) ---
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function speakBeep(text, cb) {
+  try {
+    const ctx = getAudioCtx();
+    // Generate a short melody based on the text (different pitch per character)
+    const duration = 0.15;
+    const gap = 0.05;
+    const now = ctx.currentTime;
+
+    for (let i = 0; i < Math.min(text.length, 6); i++) {
+      const freq = 300 + (text.charCodeAt(i) % 500);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.3;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const start = now + i * (duration + gap);
+      osc.start(start);
+      osc.stop(start + duration);
+    }
+
+    const totalDur = Math.min(text.length, 6) * (duration + gap);
+    addLog(`beep: ${text} (${totalDur.toFixed(1)}s)`);
+    setTimeout(() => { if (cb) cb(); }, totalDur * 1000 + 100);
+  } catch(e) {
+    addLog('beep error: ' + e.message);
     if (cb) cb();
-  };
-
-  // Prefetch next word
-  const nextW = WORDS[idx + 1];
-  if (nextW) prefetchTTS(nextW.h);
-
-  singleAudio.onended = onDone;
-  singleAudio.onerror = () => { addLog('TTS error (single)'); onDone(); };
-  singleAudio.loop = false;
-  singleAudio.volume = 1.0;
-  singleAudio.playbackRate = 1.0;
-
-  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
-
-  if (ttsBlobs[text]) {
-    addLog('Single BLOB: ' + text);
-    singleAudio.src = ttsBlobs[text];
-    singleAudio.play().catch(() => { addLog('Single blob fail'); onDone(); });
-  } else {
-    addLog('Single DIRECT: ' + text);
-    singleAudio.src = directUrl;
-    singleAudio.play().catch(() => { addLog('Single direct fail'); onDone(); });
-    fetch(directUrl).then(r => r.blob()).then(blob => {
-      if (!ttsBlobs[text]) {
-        ttsBlobs[text] = URL.createObjectURL(blob);
-        addLog('Single cached: ' + text);
-      }
-    }).catch(() => {});
   }
 }
 
 // === SPEAK WRAPPER ===
 function speakWord(text, cb) {
-  if (currentMethod === 'blob') speakBlob(text, cb);
-  else if (currentMethod === 'direct') speakDirect(text, cb);
-  else if (currentMethod === 'single') speakSingle(text, cb);
+  if (currentMethod === 'synth') speakSynth(text, cb);
+  else if (currentMethod === 'gtts') speakGoogleTTS(text, cb);
+  else if (currentMethod === 'beep') speakBeep(text, cb);
 }
 
-// === AUTO PLAY ===
+// ========================================
+// === INDIVIDUAL TEST BUTTONS ===
+// ========================================
+function testBeep() {
+  addLog('--- Beep Test ---');
+  speakBeep('テスト', () => addLog('Beep test done'));
+}
+function testSpeechSynth() {
+  addLog('--- SpeechSynthesis Test ---');
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  addLog('Voices available: ' + voices.length);
+  const jaVoices = voices.filter(v => v.lang.startsWith('ja'));
+  addLog('Japanese voices: ' + jaVoices.map(v => v.name).join(', '));
+  speakSynth('おはよう', () => addLog('SpeechSynth test done'));
+}
+function testGoogleTTS() {
+  addLog('--- Google TTS Test ---');
+  // Test fetch (will likely fail due to CORS)
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=gtx&q=${encodeURIComponent('おはよう')}`;
+  addLog('Testing fetch (CORS)...');
+  fetch(url).then(r => {
+    addLog('fetch status: ' + r.status + ' type: ' + r.type);
+    return r.blob();
+  }).then(blob => {
+    addLog('fetch OK! blob size: ' + blob.size);
+  }).catch(e => {
+    addLog('fetch failed (expected - CORS): ' + e.message);
+  });
+  // Test audio element
+  addLog('Testing <audio> element...');
+  speakGoogleTTS('おはよう', () => addLog('Google TTS test done'));
+}
+
+// ========================================
+// === AUTO PLAY LOOP ===
+// ========================================
 function autoPlay(count) {
   const myId = playId;
   if (!playing) return;
@@ -319,8 +348,7 @@ function autoPlay(count) {
 
   if (count >= repeatCount) {
     playCount = 0;
-    addLog(`--- Word ${idx+1}/${WORDS.length} done, moving next ---`);
-    const audioEl = currentMethod === 'single' ? singleAudio : ttsAudio;
+    addLog(`--- Word ${idx+1}/${WORDS.length} done, next ---`);
     playDelay(400, () => {
       if (playId !== myId || !playing) return;
       if (idx < WORDS.length - 1) {
@@ -332,7 +360,7 @@ function autoPlay(count) {
         stopPlay();
         updateUI();
       }
-    }, audioEl);
+    });
     return;
   }
 
@@ -346,28 +374,25 @@ function autoPlay(count) {
   speakWord(w.h, () => {
     if (!playing || playId !== myId) return;
     addLog(`Delay ${delaySec}s...`);
-    const audioEl = currentMethod === 'single' ? singleAudio : ttsAudio;
     playDelay(delaySec * 1000, () => {
       if (!playing || playId !== myId) return;
       autoPlay(count + 1);
-    }, audioEl);
+    });
   });
 }
 
 function togglePlay() {
-  if (playing) { stopPlay(); }
-  else { startPlay(); }
+  if (playing) stopPlay();
+  else startPlay();
   updateUI();
 }
 
 function startPlay() {
   playing = true;
-  addLog('=== START ===  method=' + currentMethod);
-  if (currentMethod !== 'single') startBgLoop();
+  addLog('=== START === method=' + currentMethod);
+  startBgLoop();
   requestWakeLock();
   updateMediaSession();
-  // Prefetch current word
-  prefetchTTS(WORDS[idx].h);
   autoPlay(0);
 }
 
@@ -377,20 +402,16 @@ function stopPlay() {
   playId++;
   speakSeq++;
   ttsAudio.pause(); ttsAudio.onended = null; ttsAudio.onerror = null;
-  singleAudio.pause(); singleAudio.onended = null; singleAudio.onerror = null;
   window.speechSynthesis?.cancel();
   stopBgLoop();
   if (wakeLock) { wakeLock.release(); wakeLock = null; }
-  // Clear cache
-  Object.values(ttsBlobs).forEach(u => URL.revokeObjectURL(u));
-  ttsBlobs = {};
   addLog('=== STOPPED ===');
 }
 
 function playNext() {
   if (idx < WORDS.length - 1) {
     const wasPlaying = playing;
-    if (wasPlaying) { playId++; speakSeq++; ttsAudio.pause(); singleAudio.pause(); }
+    if (wasPlaying) { playId++; speakSeq++; ttsAudio.pause(); }
     idx++;
     playCount = 0;
     updateUI();
@@ -401,7 +422,7 @@ function playNext() {
 function playPrev() {
   if (idx > 0) {
     const wasPlaying = playing;
-    if (wasPlaying) { playId++; speakSeq++; ttsAudio.pause(); singleAudio.pause(); }
+    if (wasPlaying) { playId++; speakSeq++; ttsAudio.pause(); }
     idx--;
     playCount = 0;
     updateUI();
@@ -411,13 +432,13 @@ function playPrev() {
 
 function speakCurrent() {
   const w = WORDS[idx];
-  addLog('Single speak: ' + w.h);
-  speakWord(w.h, () => addLog('Single speak done'));
+  addLog('Speak once: ' + w.h);
+  speakWord(w.h, () => addLog('Speak once done'));
 }
 
 // === VISIBILITY CHANGE ===
 document.addEventListener('visibilitychange', () => {
-  addLog('Visibility: ' + document.visibilityState);
+  addLog('Visibility → ' + document.visibilityState);
   if (document.visibilityState === 'visible' && playing) {
     requestWakeLock();
   }
@@ -444,10 +465,14 @@ function updateUI() {
   }
 }
 
-// Init
+// === INIT ===
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
 updateUI();
-addLog('Test page loaded. Select method and press Play.');
-addLog('Turn off screen while playing to test background audio.');
+addLog('v2 loaded. Methods: A(SpeechSynth) B(GoogleTTS) C(Beep)');
+addLog('Use test buttons first to check which methods work.');
 </script>
 </body>
 </html>
