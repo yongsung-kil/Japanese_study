@@ -299,7 +299,7 @@ body {
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
-const APP_VERSION = "v26.02.15.15:20:00";
+const APP_VERSION = "v26.02.15.15:28:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -654,35 +654,56 @@ function speak(text, cb) {
   speakGoogleTTS(text, safeCb);
 }
 
-// 한국어 TTS (Google TTS, tl=ko)
+// 한국어 TTS (Google TTS, tl=ko) + SpeechSynthesis 폴백
 function speakKo(text, cb) {
   cancelSpeak();
   const mySeq = ++speakSeq;
   let done = false;
   ttsPlaying = true;
-  const onDone = () => {
+  // [품사] 태그 제거 → 깔끔한 한국어만 TTS에 전달
+  const clean = text.replace(/^\[.*?\]\s*/, '');
+  const onDone = (fallback) => {
     if (done || mySeq !== speakSeq) return;
     done = true;
     ttsPlaying = false;
-    if (cb) cb();
+    if (fallback && document.visibilityState === 'visible') {
+      speakLocalKo(clean, cb);
+    } else if (cb) cb();
   };
-  ttsAudio.onended = onDone;
-  ttsAudio.onerror = onDone;
+  ttsAudio.onended = () => onDone(false);
+  ttsAudio.onerror = () => onDone(true);
   ttsAudio.loop = false;
   ttsAudio.volume = 1.0;
   ttsAudio.playbackRate = 1.0;
-  const cacheKey = "ko:" + text;
-  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encodeURIComponent(text)}`;
+  const cacheKey = "ko:" + clean;
+  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encodeURIComponent(clean)}`;
   if (ttsBlobs[cacheKey]) {
     ttsAudio.src = ttsBlobs[cacheKey];
-    ttsAudio.play().catch(() => onDone());
+    ttsAudio.play().catch(() => onDone(true));
   } else {
     ttsAudio.src = directUrl;
-    ttsAudio.play().catch(() => onDone());
+    ttsAudio.play().catch(() => onDone(true));
     fetch(directUrl).then(r => r.blob()).then(blob => {
       if (!ttsBlobs[cacheKey]) ttsBlobs[cacheKey] = URL.createObjectURL(blob);
     }).catch(() => {});
   }
+}
+
+// SpeechSynthesis 한국어 폴백 (포그라운드 전용)
+function speakLocalKo(text, cb) {
+  if (!window.speechSynthesis) { if (cb) cb(); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "ko-KR"; u.rate = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const koVoice = voices.find(v => v.lang.startsWith("ko"));
+  if (koVoice) u.voice = koVoice;
+  let done = false;
+  const finish = () => { if (done) return; done = true; if (cb) cb(); };
+  u.onend = finish;
+  u.onerror = finish;
+  window.speechSynthesis.speak(u);
+  setTimeout(() => { if (!done && !window.speechSynthesis.speaking) finish(); }, 3000);
 }
 
 // Preload voices (폴백용)
