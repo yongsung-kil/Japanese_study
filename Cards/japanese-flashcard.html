@@ -566,6 +566,22 @@ function getLocalAudioUrl(text, lang) {
 
 function clearTTSCache() { /* no-op: 로컬 MP3는 캐시 정리 불필요 */ }
 
+// 현재 Day의 모든 MP3를 브라우저 캐시에 프리로드
+async function preloadDayAudio(words) {
+  if (!audioManifest) await manifestReady;
+  if (!audioManifest) return;
+  const urls = [];
+  for (const w of words) {
+    const text = w.h.includes(' / ') ? w.h.split(' / ')[0] : w.h;
+    const jaUrl = getLocalAudioUrl(text, 'ja');
+    if (jaUrl) urls.push(jaUrl);
+    const koClean = (w.m || '').replace(/^\[.*?\]\s*/, '');
+    const koUrl = getLocalAudioUrl(koClean, 'ko');
+    if (koUrl) urls.push(koUrl);
+  }
+  await Promise.all(urls.map(url => fetch(url).catch(() => {})));
+}
+
 // === TTS ===
 function cancelSpeak() {
   speakSeq++;
@@ -661,10 +677,10 @@ function speakKo(text, cb) {
     ttsAudio.onerror = () => onDone(true);
     ttsAudio.loop = false;
     ttsAudio.volume = 1.0;
-    ttsAudio.playbackRate = 1.0;
     const localUrl = getLocalAudioUrl(clean, 'ko');
     if (localUrl) {
       ttsAudio.src = localUrl;
+      ttsAudio.playbackRate = state.speed;
       ttsAudio.play().catch(() => onDone(true));
     } else {
       onDone(true);
@@ -782,13 +798,19 @@ function autoPlay(count) {
   });
 }
 
-function togglePlay() {
+async function togglePlay() {
   if (state.playing) { stopAuto(); }
   else {
     state.playing = true;
     startBackgroundAudio();
     requestWakeLock();
     updateMediaSession();
+    render();
+    // 현재 Day 단어들의 MP3를 미리 다운로드
+    const isListen = state.mode === "listening";
+    const words = isListen ? state.listenWords : getWords();
+    await preloadDayAudio(words);
+    if (!state.playing) return; // 프리로드 중 정지했으면 무시
     autoPlay(autoPlayStart());
   }
   render();
