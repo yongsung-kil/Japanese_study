@@ -300,7 +300,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:03:57";
+const APP_VERSION = "v26.02.16.23:26:32";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -556,7 +556,7 @@ function speakKo(text, cb) {
   ttsAudio.onerror = () => onDone(true);
   ttsAudio.loop = false;
   ttsAudio.volume = 1.0;
-  ttsAudio.playbackRate = 1.0;
+  ttsAudio.playbackRate = state.speed;
   const cacheKey = "ko:" + clean;
   const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encodeURIComponent(clean)}`;
   if (ttsBlobs[cacheKey]) {
@@ -576,7 +576,7 @@ function speakLocalKo(text, cb) {
   if (!window.speechSynthesis) { if (cb) cb(); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ko-KR"; u.rate = 1.0;
+  u.lang = "ko-KR"; u.rate = state.speed;
   const voices = window.speechSynthesis.getVoices();
   const koVoice = voices.find(v => v.lang.startsWith("ko"));
   if (koVoice) u.voice = koVoice;
