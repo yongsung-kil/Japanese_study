@@ -311,7 +311,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:52:16";
+const APP_VERSION = "v26.02.17.12:00:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -369,12 +369,25 @@ let state = {
   bookmarks: JSON.parse(localStorage.getItem("jp-learned") || "{}"),
   difficult: JSON.parse(localStorage.getItem("jp-difficult") || "{}"),
   listenWords: [], listenIdx: 0,
-  speakKorean: localStorage.getItem("jp-speak-korean") !== "false",
+  readMode: localStorage.getItem("jp-read-mode") || (localStorage.getItem("jp-speak-korean") !== "false" ? "both" : "jp"),
   shuffle: localStorage.getItem("jp-shuffle") === "true",
-  shuffleHistory: [], // 랜덤 모드 이전 카드 히스토리 (최대 10)
+  shuffleSequence: [], // 랜덤 시퀀스 (pre-generated)
+  shuffleSeqIdx: 0, // 현재 랜덤 시퀀스 위치
+  shuffleHistory: [], // listening 모드 랜덤 히스토리
 };
 
 let playId = 0;
+
+function generateShuffleSequence() {
+  const all = WORD_DATA[state.day]?.words || [];
+  const seq = Array.from({length: all.length}, (_, i) => i);
+  for (let i = seq.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [seq[i], seq[j]] = [seq[j], seq[i]];
+  }
+  state.shuffleSequence = seq;
+  state.shuffleSeqIdx = 0;
+}
 
 function saveBookmarks() { localStorage.setItem("jp-learned", JSON.stringify(state.bookmarks)); }
 function getWords() {
@@ -388,6 +401,13 @@ function getAllWords() { return WORD_DATA[state.day]?.words || []; }
 function getCurrent() {
   if (state.mode === "test") return state.testWords[state.testIdx];
   if (state.mode === "listening") return state.listenWords[state.listenIdx];
+  if (state.mode === "study" && state.shuffle) {
+    if (state.shuffleSequence.length === 0 && getAllWords().length > 0) {
+      generateShuffleSequence();
+      state.idx = state.shuffleSequence[0] ?? 0;
+    }
+    return getAllWords()[state.idx];
+  }
   return getWords()[state.idx];
 }
 function bmKey(w, day) { return (day||state.day) + "-" + w.h; }
@@ -650,26 +670,47 @@ function stopAuto() {
   clearTTSCache();
 }
 
-function autoPlayStart() { return state.speakKorean ? -1 : 0; }
+function autoPlayStart() { return state.readMode !== "jp" ? -1 : 0; }
 
 function autoPlay(count) {
   const myId = playId;
   if (!state.playing) return;
   const isListen = state.mode === "listening";
-  const words = isListen ? state.listenWords : getWords();
+  const words = isListen ? state.listenWords : (state.shuffle ? getAllWords() : getWords());
   const idx = isListen ? state.listenIdx : state.idx;
 
-  // count === -1: 한국어 뜻 먼저 말하기
+  // count === -1: 한국어/한국어&일본어 읽기
   if (count === -1) {
     const w = words[idx];
     if (!w) { stopAuto(); render(); return; }
 
     speakKo(w.m, () => {
       if (!state.playing || playId !== myId) return;
-      playDelayAudio(600, () => {
-        if (!state.playing || playId !== myId) return;
-        autoPlay(0);
-      });
+      if (state.readMode === "ko") {
+        // 한국어만 읽기 → 다음 단어로
+        state.playCount = 0;
+        playDelayAudio(400, () => {
+          if (playId !== myId || !state.playing) return;
+          if (state.shuffle) {
+            if (isListen) {
+              state.listenIdx = (state.listenIdx + 1) % words.length;
+            } else {
+              state.shuffleSeqIdx = (state.shuffleSeqIdx + 1) % state.shuffleSequence.length;
+              state.idx = state.shuffleSequence[state.shuffleSeqIdx];
+            }
+            state.slideDir = "left"; render(); autoPlay(autoPlayStart());
+          } else if (isListen ? state.listenIdx < words.length - 1 : idx < words.length - 1) {
+            if (isListen) state.listenIdx++; else state.idx++;
+            state.slideDir = "left"; render(); autoPlay(autoPlayStart());
+          } else { stopAuto(); render(); }
+        });
+      } else {
+        // 한국어&일본어 → 일본어 재생으로
+        playDelayAudio(600, () => {
+          if (!state.playing || playId !== myId) return;
+          autoPlay(0);
+        });
+      }
     });
     return;
   }
@@ -679,9 +720,12 @@ function autoPlay(count) {
     playDelayAudio(400, () => {
       if (playId !== myId || !state.playing) return;
       if (state.shuffle) {
-        pushHistory();
-        const ri = Math.floor(Math.random() * words.length);
-        if (isListen) state.listenIdx = ri; else state.idx = ri;
+        if (isListen) {
+          state.listenIdx = (state.listenIdx + 1) % words.length;
+        } else {
+          state.shuffleSeqIdx = (state.shuffleSeqIdx + 1) % state.shuffleSequence.length;
+          state.idx = state.shuffleSequence[state.shuffleSeqIdx];
+        }
         state.slideDir = "left"; render(); autoPlay(autoPlayStart());
       } else if (idx < words.length - 1) {
         if (isListen) state.listenIdx++; else state.idx++;
@@ -798,12 +842,12 @@ function goNext() {
     }
     return;
   }
-  const words = getWords();
+  const words = state.shuffle ? getAllWords() : getWords();
   const wasPlaying = state.playing;
   if (state.shuffle) {
     if (wasPlaying) { playId++; cancelSpeak(); }
-    pushHistory();
-    state.idx = randIdx(words.length); state.playCount = 0; state.slideDir = "left"; render();
+    state.shuffleSeqIdx = (state.shuffleSeqIdx + 1) % state.shuffleSequence.length;
+    state.idx = state.shuffleSequence[state.shuffleSeqIdx]; state.playCount = 0; state.slideDir = "left"; render();
     if (wasPlaying) autoPlay(autoPlayStart());
   } else if (state.idx < words.length - 1) {
     if (wasPlaying) { playId++; cancelSpeak(); }
@@ -829,13 +873,14 @@ function goPrev() {
     }
     return;
   }
-  const words = getWords();
+  const words = state.shuffle ? getAllWords() : getWords();
   const wasPlaying = state.playing;
-  if (state.shuffle && state.shuffleHistory.length > 0) {
+  if (state.shuffle) {
     if (wasPlaying) { playId++; cancelSpeak(); }
-    state.idx = state.shuffleHistory.pop(); state.playCount = 0; state.slideDir = "right"; render();
+    state.shuffleSeqIdx = (state.shuffleSeqIdx - 1 + state.shuffleSequence.length) % state.shuffleSequence.length;
+    state.idx = state.shuffleSequence[state.shuffleSeqIdx]; state.playCount = 0; state.slideDir = "right"; render();
     if (wasPlaying) autoPlay(autoPlayStart());
-  } else if (!state.shuffle && state.idx > 0) {
+  } else if (state.idx > 0) {
     if (wasPlaying) { playId++; cancelSpeak(); }
     state.idx--; state.playCount = 0; state.slideDir = "right"; render();
     if (wasPlaying) autoPlay(autoPlayStart());
@@ -974,9 +1019,14 @@ function render() {
   if (state.mode === "study") {
     // Info
     const totalWordsCount = getAllWords().length;
-    const infoCount = state.hideLearned && words.length < totalWordsCount
-      ? `${words.length > 0 ? state.idx+1 : 0}/${words.length} (전체 ${totalWordsCount})`
-      : `${state.idx+1}/${words.length}`;
+    let infoCount;
+    if (state.shuffle) {
+      infoCount = `${state.shuffleSeqIdx+1}/${state.shuffleSequence.length} 🔀`;
+    } else if (state.hideLearned && words.length < totalWordsCount) {
+      infoCount = `${words.length > 0 ? state.idx+1 : 0}/${words.length} (전체 ${totalWordsCount})`;
+    } else {
+      infoCount = `${state.idx+1}/${words.length}`;
+    }
     html += `<div class="info">${WORD_DATA[state.day].title} · ${infoCount}</div>`;
   }
 
@@ -1126,8 +1176,8 @@ function render() {
 
     // Progress
     const isListen = state.mode === "listening";
-    const pctIdx = isListen ? state.listenIdx : state.idx;
-    const pctTotal = isListen ? state.listenWords.length : words.length;
+    const pctIdx = isListen ? state.listenIdx : (state.shuffle ? state.shuffleSeqIdx : state.idx);
+    const pctTotal = isListen ? state.listenWords.length : (state.shuffle ? state.shuffleSequence.length : words.length);
     const pct = ((pctIdx + 1) / pctTotal * 100);
     html += `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
   }
@@ -1177,10 +1227,10 @@ function render() {
           </div>
         </div>
         <div class="settings-row">
-          <span class="settings-label">한국어 뜻 읽기</span>
+          <span class="settings-label">읽기</span>
           <div class="settings-value">
-            <button style="background:${state.speakKorean?'var(--success)':'var(--day-inactive)'};color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
-              onclick="toggleSpeakKorean()">${state.speakKorean?'ON':'OFF'}</button>
+            <button style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px;min-width:90px"
+              onclick="toggleReadMode()">${state.readMode==='jp'?'일본어':state.readMode==='ko'?'한국어':'한&일'}</button>
           </div>
         </div>
         <div class="settings-row">
@@ -1294,8 +1344,8 @@ window.addEventListener("popstate", (e) => {
 history.replaceState({ mode: "categories" }, "");
 
 // === ACTIONS ===
-function selectDay(d) { stopAuto(); state.day = d; state.idx = 0; state.mode = "study"; pushMode("study"); render(); }
-function openDay(d) { state.day = d; state.idx = 0; state.mode = "study"; pushMode("study"); render(); }
+function selectDay(d) { stopAuto(); state.day = d; generateShuffleSequence(); state.idx = state.shuffle ? (state.shuffleSequence[0] ?? 0) : 0; state.mode = "study"; pushMode("study"); render(); }
+function openDay(d) { state.day = d; generateShuffleSequence(); state.idx = state.shuffle ? (state.shuffleSequence[0] ?? 0) : 0; state.mode = "study"; pushMode("study"); render(); }
 function openCategory(ci) { state.catIdx = ci; state.mode = "menu"; pushMode("menu"); render(); }
 function goCategories() { stopAuto(); state.mode = "categories"; skipPopstate = true; history.back(); render(); }
 function goMenu() { stopAuto(); state.mode = "menu"; skipPopstate = true; history.back(); render(); }
@@ -1351,21 +1401,32 @@ function toggleExample() {
   localStorage.setItem("jp-show-example", state.showExample);
   render();
 }
-function toggleSpeakKorean() {
-  state.speakKorean = !state.speakKorean;
-  localStorage.setItem("jp-speak-korean", state.speakKorean);
+function toggleReadMode() {
+  const modes = ["jp", "ko", "both"];
+  const i = modes.indexOf(state.readMode);
+  state.readMode = modes[(i + 1) % modes.length];
+  localStorage.setItem("jp-read-mode", state.readMode);
   render();
 }
 function toggleShuffle() {
   state.shuffle = !state.shuffle;
   localStorage.setItem("jp-shuffle", state.shuffle);
+  if (state.shuffle) {
+    // 랜덤 모드로: 저장된 시퀀스 위치로
+    if (state.shuffleSequence.length > 0) {
+      state.idx = state.shuffleSequence[state.shuffleSeqIdx] ?? 0;
+    }
+  } else {
+    // 순차 모드로: 0번부터
+    state.idx = 0;
+  }
   render();
 }
 function toggleHideLearned() {
   state.hideLearned = !state.hideLearned;
   localStorage.setItem("jp-hide-learned", state.hideLearned);
   // idx 보정: 필터링된 리스트에 맞게
-  if (state.hideLearned && state.mode === "study") {
+  if (state.hideLearned && state.mode === "study" && !state.shuffle) {
     const visible = getWords();
     if (state.idx >= visible.length) state.idx = Math.max(0, visible.length - 1);
   }
@@ -1435,7 +1496,7 @@ function toggleBm() {
   else { state.bookmarks[key] = { day:state.day, h:w.h, r:w.r, m:w.m, cnt:1 }; }
   saveBookmarks();
   // 외운 단어 숨기기 ON 상태에서 외운 체크하면 → idx 보정 + autoPlay 리셋
-  if (state.hideLearned && !wasLearned && state.mode === "study") {
+  if (state.hideLearned && !wasLearned && state.mode === "study" && !state.shuffle) {
     const wasPlaying = state.playing;
     if (wasPlaying) { playId++; cancelSpeak(); }
     const visible = getWords();
