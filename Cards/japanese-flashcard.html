@@ -311,7 +311,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:44:19";
+const APP_VERSION = "v26.02.16.23:48:38";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -370,6 +370,8 @@ let state = {
   difficult: JSON.parse(localStorage.getItem("jp-difficult") || "{}"),
   listenWords: [], listenIdx: 0,
   speakKorean: localStorage.getItem("jp-speak-korean") !== "false",
+  shuffle: localStorage.getItem("jp-shuffle") === "true",
+  shuffleHistory: [], // 랜덤 모드 이전 카드 히스토리 (최대 10)
 };
 
 let playId = 0;
@@ -676,7 +678,12 @@ function autoPlay(count) {
     state.playCount = 0;
     playDelayAudio(400, () => {
       if (playId !== myId || !state.playing) return;
-      if (idx < words.length - 1) {
+      if (state.shuffle) {
+        pushHistory();
+        const ri = Math.floor(Math.random() * words.length);
+        if (isListen) state.listenIdx = ri; else state.idx = ri;
+        state.slideDir = "left"; render(); autoPlay(autoPlayStart());
+      } else if (idx < words.length - 1) {
         if (isListen) state.listenIdx++; else state.idx++;
         state.slideDir = "left"; render(); autoPlay(autoPlayStart());
       } else { stopAuto(); render(); }
@@ -766,14 +773,25 @@ function onTE(e) {
     else if (x > rect.width * 0.65) goNext();
   }
 }
+function randIdx(len) { return Math.floor(Math.random() * len); }
+function pushHistory() {
+  const isListen = state.mode === "listening";
+  const idx = isListen ? state.listenIdx : state.idx;
+  state.shuffleHistory.push(idx);
+}
 function goNext() {
   if (state.mode === "test") {
     if (state.testIdx < state.testWords.length - 1) { state.testIdx++; state.testRevealed = false; state.slideDir = "left"; render(); }
     return;
   }
   if (state.mode === "listening") {
-    if (state.listenIdx < state.listenWords.length - 1) {
-      const wasPlaying = state.playing;
+    const wasPlaying = state.playing;
+    if (state.shuffle) {
+      if (wasPlaying) { playId++; cancelSpeak(); }
+      pushHistory();
+      state.listenIdx = randIdx(state.listenWords.length); state.playCount = 0; state.slideDir = "left"; render();
+      if (wasPlaying) autoPlay(autoPlayStart()); else speakOnce();
+    } else if (state.listenIdx < state.listenWords.length - 1) {
       if (wasPlaying) { playId++; cancelSpeak(); }
       state.listenIdx++; state.playCount = 0; state.slideDir = "left"; render();
       if (wasPlaying) autoPlay(autoPlayStart()); else speakOnce();
@@ -781,8 +799,13 @@ function goNext() {
     return;
   }
   const words = getWords();
-  if (state.idx < words.length - 1) {
-    const wasPlaying = state.playing;
+  const wasPlaying = state.playing;
+  if (state.shuffle) {
+    if (wasPlaying) { playId++; cancelSpeak(); }
+    pushHistory();
+    state.idx = randIdx(words.length); state.playCount = 0; state.slideDir = "left"; render();
+    if (wasPlaying) autoPlay(autoPlayStart());
+  } else if (state.idx < words.length - 1) {
     if (wasPlaying) { playId++; cancelSpeak(); }
     state.idx++; state.playCount = 0; state.slideDir = "left"; render();
     if (wasPlaying) autoPlay(autoPlayStart());
@@ -794,16 +817,25 @@ function goPrev() {
     return;
   }
   if (state.mode === "listening") {
-    if (state.listenIdx > 0) {
-      const wasPlaying = state.playing;
+    const wasPlaying = state.playing;
+    if (state.shuffle && state.shuffleHistory.length > 0) {
+      if (wasPlaying) { playId++; cancelSpeak(); }
+      state.listenIdx = state.shuffleHistory.pop(); state.playCount = 0; state.slideDir = "right"; render();
+      if (wasPlaying) autoPlay(autoPlayStart()); else speakOnce();
+    } else if (!state.shuffle && state.listenIdx > 0) {
       if (wasPlaying) { playId++; cancelSpeak(); }
       state.listenIdx--; state.playCount = 0; state.slideDir = "right"; render();
       if (wasPlaying) autoPlay(autoPlayStart()); else speakOnce();
     }
     return;
   }
-  if (state.idx > 0) {
-    const wasPlaying = state.playing;
+  const words = getWords();
+  const wasPlaying = state.playing;
+  if (state.shuffle && state.shuffleHistory.length > 0) {
+    if (wasPlaying) { playId++; cancelSpeak(); }
+    state.idx = state.shuffleHistory.pop(); state.playCount = 0; state.slideDir = "right"; render();
+    if (wasPlaying) autoPlay(autoPlayStart());
+  } else if (!state.shuffle && state.idx > 0) {
     if (wasPlaying) { playId++; cancelSpeak(); }
     state.idx--; state.playCount = 0; state.slideDir = "right"; render();
     if (wasPlaying) autoPlay(autoPlayStart());
@@ -1153,6 +1185,13 @@ function render() {
               onclick="toggleSpeakKorean()">${state.speakKorean?'ON':'OFF'}</button>
           </div>
         </div>
+        <div class="settings-row">
+          <span class="settings-label">랜덤 재생</span>
+          <div class="settings-value">
+            <button style="background:${state.shuffle?'var(--success)':'var(--day-inactive)'};color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
+              onclick="toggleShuffle()">${state.shuffle?'ON':'OFF'}</button>
+          </div>
+        </div>
         <div style="font-size:13px;color:var(--muted);padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,.06)">현재 DAY 초기화</div>
         <div class="settings-row">
           <span class="settings-label">✓ 외운 단어 초기화</span>
@@ -1317,6 +1356,11 @@ function toggleExample() {
 function toggleSpeakKorean() {
   state.speakKorean = !state.speakKorean;
   localStorage.setItem("jp-speak-korean", state.speakKorean);
+  render();
+}
+function toggleShuffle() {
+  state.shuffle = !state.shuffle;
+  localStorage.setItem("jp-shuffle", state.shuffle);
   render();
 }
 function toggleHideLearned() {
