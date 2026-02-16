@@ -163,7 +163,7 @@ WORD_DATA_MIKMAT[4] = { title: "2화 표현 (일본에서 가장 비싼 치즈�
     {h:"ここだけ秋だ",r:"koko dake aki da",m:"여기만 가을이야"},
     {h:"これはチョコレートケーキ？",r:"kore wa chokoreto keeki?",m:"이건 초콜릿케이크?"},
     {h:"これがうわさのチーズケーキ",r:"kore ga uwasa no chiizu keeki",m:"이게 소문의 치즈케이크"},
-    {h:"値段間違えてませんよね",r:"nedan machigaetemsen yo ne",m:"가격 틀린 거 아니죠?"},
+    {h:"値段間違えてませんよね",r:"nedan machigaetemasen yo ne",m:"가격 틀린 거 아니죠?"},
     {h:"ホールのお取り扱いになっております",r:"hooru no otoriatsukai ni natte orimasu",m:"홀 케이크 기준입니다"},
     {h:"こちらへ",r:"kochira e",m:"이쪽으로"},
     {h:"お邪魔して",r:"ojama shite",m:"방문해서/찾아뵙고"},

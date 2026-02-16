@@ -171,7 +171,7 @@ WORD_DATA_MIKMAT[6] = { title: "3화 표현 (눈물 나는 맛, 레전드 야키
     {h:"カルビとコプチャンを召し上がりました",r:"karubi to kopuchan wo meshiagarimashita",m:"갈비와 곱창을 드셨어요"},
     {h:"とりあえずそれと極上霜降りロース",r:"toriaezu sore to gokujou shimofuri roosu",m:"일단 그것과 최상급 마블링 등심"},
     {h:"チャレンジしましょう",r:"charenji shimashou",m:"도전합시다"},
-    {h:"焼肉は生を焼くんですよ",r:"yakiniku wa nama wo yakundsu yo",m:"야키니쿠는 생고기를 굽는 거예요"},
+    {h:"焼肉は生を焼くんですよ",r:"yakiniku wa nama wo yakundesu yo",m:"야키니쿠는 생고기를 굽는 거예요"},
     {h:"脂肪 肉 脂肪みたいな",r:"shibou niku shibou mitai na",m:"지방, 살코기, 지방 같은"},
     {h:"当店一番人気のシビレになります",r:"touten ichiban ninki no shibire ni narimasu",m:"저희 가게 제일 인기 있는 시비레입니다"},
     {h:"一応看板メニューです",r:"ichiou kanban menyuu desu",m:"일단 간판 메뉴입니다"},
