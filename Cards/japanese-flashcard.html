@@ -303,7 +303,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:34:54";
+const APP_VERSION = "v26.02.16.23:36:10";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -998,8 +998,14 @@ function render() {
       </button>`;
     }
     if (state.mode === "listening") {
+      if (state.listenType === "learned") {
+        const bmListen = w.day ? !!state.bookmarks[w.day+"-"+w.h] : false;
+        html += `<button class="bookmark-btn ${bmListen?'active':''}" onclick="toggleListenBm()">
+          ${bmListen ? "✓" : "○"}
+        </button>`;
+      }
       const dfActive = isDf(w, w.day);
-      html += `<button class="bookmark-btn ${dfActive?'active':''}" onclick="toggleDifficult()" style="color:${dfActive?'#ffd700':'var(--muted)'}; filter:${dfActive?'drop-shadow(0 0 6px rgba(255,215,0,.4))':'none'}">
+      html += `<button class="difficult-btn ${dfActive?'active':''}" onclick="toggleDifficult()" style="color:${dfActive?'#ffd700':'var(--muted)'}; filter:${dfActive?'drop-shadow(0 0 6px rgba(255,215,0,.4))':'none'}">
         ${dfActive ? "★" : "☆"}
       </button>`;
     }
@@ -1360,6 +1366,13 @@ function resetDayDifficult() {
   words.forEach(w => { delete state.difficult[day + "-" + w.h]; });
   saveDifficult();
   render();
+}
+function toggleListenBm() {
+  const w = getCurrent(); if (!w || !w.day) return;
+  const key = w.day + "-" + w.h;
+  if (state.bookmarks[key]) { delete state.bookmarks[key]; }
+  else { state.bookmarks[key] = { day:w.day, h:w.h, r:w.r, m:w.m, cnt:1 }; }
+  saveBookmarks(); render();
 }
 function toggleBm() {
   const w = getCurrent(); if (!w) return;
