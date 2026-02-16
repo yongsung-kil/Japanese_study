@@ -303,7 +303,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:27:59";
+const APP_VERSION = "v26.02.16.23:30:14";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1095,6 +1095,21 @@ function render() {
               onclick="toggleSpeakKorean()">${state.speakKorean?'ON':'OFF'}</button>
           </div>
         </div>
+        <div style="font-size:13px;color:var(--muted);padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,.06)">현재 DAY 초기화</div>
+        <div class="settings-row">
+          <span class="settings-label">✓ 외운 단어 초기화</span>
+          <div class="settings-value">
+            <button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
+              onclick="resetDayLearned()">초기화</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">★ 어려운 단어 초기화</span>
+          <div class="settings-value">
+            <button style="background:#d4a017;color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
+              onclick="resetDayDifficult()">초기화</button>
+          </div>
+        </div>
         <div style="font-size:13px;color:var(--muted);padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,.06)">글씨 크기</div>
         <div class="settings-row">
           <span class="settings-label">메인 (한자/가나)</span>
@@ -1254,6 +1269,29 @@ function toggleHideLearned() {
     const visible = getWords();
     if (state.idx >= visible.length) state.idx = Math.max(0, visible.length - 1);
   }
+  render();
+}
+function resetDayLearned() {
+  const day = state.day;
+  const words = WORD_DATA[day]?.words || [];
+  if (words.length === 0) return;
+  const count = words.filter(w => state.bookmarks[day + "-" + w.h]).length;
+  if (count === 0) { alert("초기화할 외운 단어가 없어요."); return; }
+  if (!confirm(`DAY ${day} (${WORD_DATA[day].title})\n외운 단어 ✓ ${count}개를 초기화할까요?`)) return;
+  words.forEach(w => { delete state.bookmarks[day + "-" + w.h]; });
+  saveBookmarks();
+  state.idx = 0;
+  render();
+}
+function resetDayDifficult() {
+  const day = state.day;
+  const words = WORD_DATA[day]?.words || [];
+  if (words.length === 0) return;
+  const count = words.filter(w => state.difficult[day + "-" + w.h]).length;
+  if (count === 0) { alert("초기화할 어려운 단어가 없어요."); return; }
+  if (!confirm(`DAY ${day} (${WORD_DATA[day].title})\n어려운 단어 ★ ${count}개를 초기화할까요?`)) return;
+  words.forEach(w => { delete state.difficult[day + "-" + w.h]; });
+  saveDifficult();
   render();
 }
 function toggleBm() {
