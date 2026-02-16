@@ -299,7 +299,7 @@ body {
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
-const APP_VERSION = "v26.02.15.17:05:00";
+const APP_VERSION = "v26.02.16.22:03:26";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -549,37 +549,30 @@ function updateMediaSession() {
   navigator.mediaSession.setActionHandler('nexttrack', () => goNext());
 }
 
-// === 로컬 MP3 오디오 시스템 (백그라운드 재생 핵심) ===
-// 사전 생성된 MP3 파일을 <audio> 요소로 재생 → 화면 꺼져도 재생 유지
-let audioManifest = null;
-const manifestReady = fetch('../audio/manifest.json')
-  .then(r => r.json())
-  .then(m => { audioManifest = m; })
-  .catch(() => {});
+// === TTS BLOB 캐시 (백그라운드 재생 핵심) ===
+// Google TTS를 Blob으로 미리 다운로드 → 화면 꺼져도 네트워크 없이 재생 가능
+let ttsBlobs = {}; // text -> blobUrl
 
-function getLocalAudioUrl(text, lang) {
-  if (!audioManifest || !audioManifest[lang]) return null;
-  const filename = audioManifest[lang][text];
-  if (!filename) return null;
-  return `../audio/${lang}/${encodeURIComponent(filename)}`;
+function prefetchTTS(text) {
+  if (!text || ttsBlobs[text]) return;
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+  fetch(url).then(r => r.blob()).then(blob => {
+    ttsBlobs[text] = URL.createObjectURL(blob);
+  }).catch(() => {});
 }
 
-function clearTTSCache() { /* no-op: 로컬 MP3는 캐시 정리 불필요 */ }
+function getNextWordText() {
+  const isListen = state.mode === "listening";
+  const words = isListen ? state.listenWords : getWords();
+  const idx = isListen ? state.listenIdx : state.idx;
+  const w = words[idx + 1];
+  if (!w) return null;
+  return w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
+}
 
-// 현재 Day의 모든 MP3를 브라우저 캐시에 프리로드
-async function preloadDayAudio(words) {
-  if (!audioManifest) await manifestReady;
-  if (!audioManifest) return;
-  const urls = [];
-  for (const w of words) {
-    const text = w.h.includes(' / ') ? w.h.split(' / ')[0] : w.h;
-    const jaUrl = getLocalAudioUrl(text, 'ja');
-    if (jaUrl) urls.push(jaUrl);
-    const koClean = (w.m || '').replace(/^\[.*?\]\s*/, '');
-    const koUrl = getLocalAudioUrl(koClean, 'ko');
-    if (koUrl) urls.push(koUrl);
-  }
-  await Promise.all(urls.map(url => fetch(url).catch(() => {})));
+function clearTTSCache() {
+  Object.values(ttsBlobs).forEach(u => URL.revokeObjectURL(u));
+  ttsBlobs = {};
 }
 
 // === TTS ===
@@ -599,37 +592,37 @@ function speakGoogleTTS(text, cb) {
   const mySeq = ++speakSeq;
   let done = false;
   ttsPlaying = true;
-  const onDone = () => {
+  const onDone = (fallback) => {
     if (done || mySeq !== speakSeq) return;
     done = true;
     ttsPlaying = false;
-    if (cb) cb();
+    // 백그라운드에서는 speakLocal 스킵 (SpeechSynthesis + setTimeout 둘 다 안 됨)
+    if (fallback && document.visibilityState === 'visible') speakLocal(text, cb);
+    else if (cb) cb();
   };
 
-  // 화면 켜짐: speechSynthesis (고음질)
-  // 화면 꺼짐: 로컬 MP3 (백그라운드 재생 가능)
-  if (document.visibilityState === 'visible') {
-    speakLocal(text, cb);
-    return;
+  // 다음 단어 프리페치 (현재 재생 중에 미리 다운로드)
+  prefetchTTS(getNextWordText());
+
+  ttsAudio.onended = () => onDone(false);
+  ttsAudio.onerror = () => onDone(true);
+  ttsAudio.loop = false;
+  ttsAudio.volume = 1.0;
+  ttsAudio.playbackRate = state.speed;
+
+  // 캐시된 Blob이 있으면 사용 (네트워크 불필요 → 백그라운드 OK)
+  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+  if (ttsBlobs[text]) {
+    ttsAudio.src = ttsBlobs[text];
+    ttsAudio.play().catch(() => onDone(true));
+  } else {
+    // 첫 재생: 직접 URL로 재생 + 동시에 Blob 캐시 (반복 재생용)
+    ttsAudio.src = directUrl;
+    ttsAudio.play().catch(() => onDone(true));
+    fetch(directUrl).then(r => r.blob()).then(blob => {
+      if (!ttsBlobs[text]) ttsBlobs[text] = URL.createObjectURL(blob);
+    }).catch(() => {});
   }
-
-  const playMp3 = () => {
-    ttsAudio.onended = onDone;
-    ttsAudio.onerror = onDone;
-    ttsAudio.loop = false;
-    ttsAudio.volume = 1.0;
-    const localUrl = getLocalAudioUrl(text, 'ja');
-    if (localUrl) {
-      ttsAudio.src = localUrl;
-      ttsAudio.playbackRate = state.speed;
-      ttsAudio.play().catch(() => onDone());
-    } else {
-      onDone();
-    }
-  };
-
-  if (audioManifest) playMp3();
-  else manifestReady.then(playMp3);
 }
 
 // SpeechSynthesis (포그라운드 폴백 전용)
@@ -661,44 +654,39 @@ function speak(text, cb) {
   speakGoogleTTS(text, safeCb);
 }
 
-// 한국어 TTS: 화면 켜짐→speechSynthesis / 화면 꺼짐→MP3
+// 한국어 TTS (Google TTS, tl=ko) + SpeechSynthesis 폴백
 function speakKo(text, cb) {
   cancelSpeak();
   const mySeq = ++speakSeq;
   let done = false;
   ttsPlaying = true;
+  // [품사] 태그 제거 → 깔끔한 한국어만 TTS에 전달
   const clean = text.replace(/^\[.*?\]\s*/, '');
-  const onDone = () => {
+  const onDone = (fallback) => {
     if (done || mySeq !== speakSeq) return;
     done = true;
     ttsPlaying = false;
-    if (cb) cb();
+    if (fallback && document.visibilityState === 'visible') {
+      speakLocalKo(clean, cb);
+    } else if (cb) cb();
   };
-
-  // 화면 켜짐: speechSynthesis (고음질)
-  if (document.visibilityState === 'visible') {
-    speakLocalKo(clean, cb);
-    return;
+  ttsAudio.onended = () => onDone(false);
+  ttsAudio.onerror = () => onDone(true);
+  ttsAudio.loop = false;
+  ttsAudio.volume = 1.0;
+  ttsAudio.playbackRate = 1.0;
+  const cacheKey = "ko:" + clean;
+  const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encodeURIComponent(clean)}`;
+  if (ttsBlobs[cacheKey]) {
+    ttsAudio.src = ttsBlobs[cacheKey];
+    ttsAudio.play().catch(() => onDone(true));
+  } else {
+    ttsAudio.src = directUrl;
+    ttsAudio.play().catch(() => onDone(true));
+    fetch(directUrl).then(r => r.blob()).then(blob => {
+      if (!ttsBlobs[cacheKey]) ttsBlobs[cacheKey] = URL.createObjectURL(blob);
+    }).catch(() => {});
   }
-
-  // 화면 꺼짐: 로컬 MP3 (백그라운드 재생)
-  const playMp3 = () => {
-    ttsAudio.onended = onDone;
-    ttsAudio.onerror = onDone;
-    ttsAudio.loop = false;
-    ttsAudio.volume = 1.0;
-    const localUrl = getLocalAudioUrl(clean, 'ko');
-    if (localUrl) {
-      ttsAudio.src = localUrl;
-      ttsAudio.playbackRate = state.speed;
-      ttsAudio.play().catch(() => onDone());
-    } else {
-      onDone();
-    }
-  };
-
-  if (audioManifest) playMp3();
-  else manifestReady.then(playMp3);
 }
 
 // SpeechSynthesis 한국어 폴백 (포그라운드 전용)
@@ -808,19 +796,13 @@ function autoPlay(count) {
   });
 }
 
-async function togglePlay() {
+function togglePlay() {
   if (state.playing) { stopAuto(); }
   else {
     state.playing = true;
     startBackgroundAudio();
     requestWakeLock();
     updateMediaSession();
-    render();
-    // 현재 Day 단어들의 MP3를 미리 다운로드
-    const isListen = state.mode === "listening";
-    const words = isListen ? state.listenWords : getWords();
-    await preloadDayAudio(words);
-    if (!state.playing) return; // 프리로드 중 정지했으면 무시
     autoPlay(autoPlayStart());
   }
   render();
@@ -1345,10 +1327,7 @@ function goCategories() { stopAuto(); state.mode = "categories"; skipPopstate = 
 function goMenu() { stopAuto(); state.mode = "menu"; skipPopstate = true; history.back(); render(); }
 function backToStudy() { stopAuto(); state.mode = "study"; skipPopstate = true; history.back(); render(); }
 function toggleMeaning() { state.showMeaning = !state.showMeaning; render(); }
-function toggleSettings() {
-  if (!state.showSettings && state.playing) stopAuto();
-  state.showSettings = !state.showSettings; render();
-}
+function toggleSettings() { state.showSettings = !state.showSettings; render(); }
 function closeSettings(e) { if (e.target === e.currentTarget) { state.showSettings = false; render(); } }
 function updateRepeatCount(val) {
   const n = Math.max(1, Math.min(10, parseInt(val) || 3));
