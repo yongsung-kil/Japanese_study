@@ -96,6 +96,14 @@ body {
   font-size:22px; cursor:pointer; color:var(--muted); transition:all .2s; z-index:10;
 }
 .difficult-btn.active { color:#ffd700; filter:drop-shadow(0 0 6px rgba(255,215,0,.4)); }
+.card-autoplay {
+  position:absolute; top:14px; right:88px; background:none; border:none;
+  width:28px; height:28px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;
+}
+.card-autoplay .mini-play { display:block; width:0; height:0; border-style:solid; border-width:7px 0 7px 12px; border-color:transparent transparent transparent var(--muted); transition:all .2s; }
+.card-autoplay.active .mini-play { border-color:transparent transparent transparent var(--accent); filter:drop-shadow(0 0 6px var(--accent-glow)); }
+.card-autoplay .mini-pause { display:flex; gap:3px; align-items:center; }
+.card-autoplay .mini-pause span { display:block; width:3px; height:14px; background:var(--accent); border-radius:1px; filter:drop-shadow(0 0 6px var(--accent-glow)); }
 .play-dots {
   position:absolute; top:16px; left:16px; display:flex; gap:4px;
 }
@@ -303,7 +311,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:39:36";
+const APP_VERSION = "v26.02.16.23:42:22";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -984,7 +992,7 @@ function render() {
     html += `<div class="card-area${slideClass}" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE(event)">`;
     state.slideDir = "";
 
-    // Bookmark + Difficult (study) / Difficult only (listening)
+    // Bookmark + Difficult + AutoPlay (study) / Difficult only (listening)
     if (state.mode === "study") {
       html += `<button class="bookmark-btn ${bmActive?'active':''}" onclick="toggleBm()">
         ${bmActive ? "✓" : "○"}
@@ -992,6 +1000,9 @@ function render() {
       const dfActive = isDf(w);
       html += `<button class="difficult-btn ${dfActive?'active':''}" onclick="toggleDifficult()">
         ${dfActive ? "★" : "☆"}
+      </button>`;
+      html += `<button class="card-autoplay ${state.playing?'active':''}" onclick="event.stopPropagation();togglePlay()">
+        ${state.playing ? '<span class="mini-pause"><span></span><span></span></span>' : '<span class="mini-play"></span>'}
       </button>`;
     }
     if (state.mode === "listening") {
@@ -1004,6 +1015,9 @@ function render() {
       const dfActive = isDf(w, w.day);
       html += `<button class="difficult-btn ${dfActive?'active':''}" onclick="toggleDifficult()" style="color:${dfActive?'#ffd700':'var(--muted)'}; filter:${dfActive?'drop-shadow(0 0 6px rgba(255,215,0,.4))':'none'}">
         ${dfActive ? "★" : "☆"}
+      </button>`;
+      html += `<button class="card-autoplay ${state.playing?'active':''}" onclick="event.stopPropagation();togglePlay()">
+        ${state.playing ? '<span class="mini-pause"><span></span><span></span></span>' : '<span class="mini-play"></span>'}
       </button>`;
     }
 
