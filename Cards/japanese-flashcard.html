@@ -299,7 +299,7 @@ body {
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="미친맛집.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>
-const APP_VERSION = "v26.02.16.22:03:26";
+const APP_VERSION = "v26.02.16.22:09:53";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -421,135 +421,17 @@ function startListening() {
   setTimeout(() => speakOnce(), 300);
 }
 
-// === WAKE LOCK (화면 꺼짐 방지) ===
-let wakeLock = null;
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => { wakeLock = null; });
-    }
-  } catch(e) {}
-}
-function releaseWakeLock() {
-  if (wakeLock) { wakeLock.release(); wakeLock = null; }
-}
-
-// === 백그라운드 오디오 시스템 ===
-// 핵심: 단일 <audio> 엘리먼트를 절대 멈추지 않게 유지
-// TTS → 무음 루프 → TTS → 무음 루프 끊김없이 전환
-
-// 프로그래밍으로 유효한 무음 WAV 생성 (2초)
-function createSilentWav(seconds) {
-  const rate = 8000, samples = rate * seconds;
-  const buf = new ArrayBuffer(44 + samples);
-  const v = new DataView(buf);
-  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  w(0,'RIFF'); v.setUint32(4, 36+samples, true); w(8,'WAVE');
-  w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
-  v.setUint16(22,1,true); v.setUint32(24,rate,true);
-  v.setUint32(28,rate,true); v.setUint16(32,1,true);
-  v.setUint16(34,8,true); w(36,'data'); v.setUint32(40,samples,true);
-  for (let i = 0; i < samples; i++) v.setUint8(44+i, 128);
-  return URL.createObjectURL(new Blob([buf], {type:'audio/wav'}));
-}
-const SILENT_URL = createSilentWav(2);
-
-// 듀얼 오디오 엘리먼트 - bgAudio는 무음 루프 전용(세션 유지), ttsAudio는 TTS/딜레이 전용
-const bgAudio = new Audio();
+// === 오디오 엘리먼트 ===
 const ttsAudio = new Audio();
 let ttsPlaying = false;
 let speakSeq = 0;
-let keepAliveTimer = null;
-let currentDelayUrl = null;
 
-// Web Audio API - 무음 오실레이터로 오디오 스레드만 유지
-// 중요: audio 엘리먼트를 AudioContext에 연결하지 않음!
-// createMediaElementSource()로 연결하면 AudioContext가 suspend될 때
-// 소리 출력이 차단되어 화면 꺼짐 시 소리가 안 남
-let audioCtx = null;
-function ensureAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    gain.gain.value = 0;
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
-  }
-}
-
-function resumeSilentLoop() {
-  bgAudio.onended = null;
-  bgAudio.onerror = null;
-  bgAudio.loop = true;
-  bgAudio.volume = 0.05;
-  bgAudio.playbackRate = 1.0;
-  bgAudio.src = SILENT_URL;
-  bgAudio.play().catch(() => {});
-}
-
-// 타이머 대신 오디오 기반 딜레이 (화면 꺼져도 ended 이벤트 발생)
-// ttsAudio 사용 - bgAudio는 무음 루프 유지
+// setTimeout 기반 딜레이
 function playDelayAudio(delayMs, callback) {
-  const delaySec = Math.max(0.1, delayMs / 1000);
-  if (currentDelayUrl) { URL.revokeObjectURL(currentDelayUrl); currentDelayUrl = null; }
-  const url = createSilentWav(delaySec);
-  currentDelayUrl = url;
-  const cleanup = () => { if (currentDelayUrl === url) { URL.revokeObjectURL(url); currentDelayUrl = null; } };
-  ttsAudio.onended = () => { cleanup(); if (callback) callback(); };
-  ttsAudio.onerror = () => { cleanup(); if (callback) callback(); };
-  ttsAudio.loop = false;
-  ttsAudio.volume = 0.01;
-  ttsAudio.playbackRate = 1.0;
-  ttsAudio.src = url;
-  ttsAudio.play().catch(() => { cleanup(); if (callback) callback(); });
+  setTimeout(() => { if (callback) callback(); }, delayMs);
 }
 
-function startBackgroundAudio() {
-  ensureAudioContext();
-  resumeSilentLoop();
-  if (!keepAliveTimer) {
-    keepAliveTimer = setInterval(() => {
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-      }
-      if (state.playing && bgAudio.paused) {
-        resumeSilentLoop();
-      }
-    }, 3000);
-  }
-}
-
-function stopBackgroundAudio() {
-  bgAudio.pause();
-  ttsAudio.pause();
-  ttsAudio.onended = null;
-  ttsAudio.onerror = null;
-  ttsPlaying = false;
-  if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
-}
-
-// === MEDIA SESSION (잠금화면 컨트롤) ===
-function updateMediaSession() {
-  if (!('mediaSession' in navigator)) return;
-  const w = getCurrent();
-  navigator.mediaSession.metadata = new MediaMetadata({
-    title: w ? (w.k || w.h) + " - " + w.m : "日本語 단어장",
-    artist: w ? w.r : "",
-    album: state.mode === "listening" ? "듣기퀴즈" : (WORD_DATA[state.day]?.title || "日本語"),
-  });
-  navigator.mediaSession.setActionHandler('play', () => { if (!state.playing) togglePlay(); });
-  navigator.mediaSession.setActionHandler('pause', () => { if (state.playing) togglePlay(); });
-  navigator.mediaSession.setActionHandler('previoustrack', () => goPrev());
-  navigator.mediaSession.setActionHandler('nexttrack', () => goNext());
-}
-
-// === TTS BLOB 캐시 (백그라운드 재생 핵심) ===
+// === TTS BLOB 캐시 ===
 // Google TTS를 Blob으로 미리 다운로드 → 화면 꺼져도 네트워크 없이 재생 가능
 let ttsBlobs = {}; // text -> blobUrl
 
@@ -584,7 +466,6 @@ function cancelSpeak() {
   ttsAudio.onerror = null;
   ttsPlaying = false;
   state.exSpeaking = false;
-  if (currentDelayUrl) { URL.revokeObjectURL(currentDelayUrl); currentDelayUrl = null; }
 }
 
 function speakGoogleTTS(text, cb) {
@@ -712,37 +593,19 @@ if (window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
-// 화면 켜짐/꺼짐 처리
+// 화면 꺼지면 자동재생 정지
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    // 화면 다시 켜짐 - wake lock 재요청 + AudioContext 복원
-    if (state.playing) {
-      requestWakeLock();
-      ensureAudioContext();
-      // 혹시 오디오가 멈춰있으면 무음 루프 재시작
-      if (bgAudio.paused) {
-        resumeSilentLoop();
-      }
-    }
-  } else {
-    // 화면 꺼짐 - AudioContext가 suspended 되지 않도록 유지
-    if (state.playing && audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
+  if (document.visibilityState === 'hidden' && state.playing) {
+    stopAuto();
+    render();
   }
 });
-
-// 첫 터치/클릭 시 AudioContext 초기화 (브라우저 autoplay 정책)
-document.addEventListener('touchstart', () => ensureAudioContext(), { once: true });
-document.addEventListener('click', () => ensureAudioContext(), { once: true });
 
 // === AUTO PLAY ===
 function stopAuto() {
   state.playing = false; state.playCount = 0;
   playId++;
   cancelSpeak();
-  stopBackgroundAudio();
-  releaseWakeLock();
   clearTTSCache();
 }
 
@@ -759,7 +622,7 @@ function autoPlay(count) {
   if (count === -1) {
     const w = words[idx];
     if (!w) { stopAuto(); render(); return; }
-    updateMediaSession();
+
     speakKo(w.m, () => {
       if (!state.playing || playId !== myId) return;
       playDelayAudio(600, () => {
@@ -783,7 +646,6 @@ function autoPlay(count) {
   }
   state.playCount = count + 1;
   render();
-  updateMediaSession();
   const w = words[idx];
   if (!w) { stopAuto(); render(); return; }
   const text = w.h.includes(" / ") ? w.h.split(" / ")[0] : w.h;
@@ -796,13 +658,11 @@ function autoPlay(count) {
   });
 }
 
-function togglePlay() {
+async function togglePlay() {
   if (state.playing) { stopAuto(); }
   else {
     state.playing = true;
-    startBackgroundAudio();
-    requestWakeLock();
-    updateMediaSession();
+    render();
     autoPlay(autoPlayStart());
   }
   render();
@@ -1327,7 +1187,10 @@ function goCategories() { stopAuto(); state.mode = "categories"; skipPopstate = 
 function goMenu() { stopAuto(); state.mode = "menu"; skipPopstate = true; history.back(); render(); }
 function backToStudy() { stopAuto(); state.mode = "study"; skipPopstate = true; history.back(); render(); }
 function toggleMeaning() { state.showMeaning = !state.showMeaning; render(); }
-function toggleSettings() { state.showSettings = !state.showSettings; render(); }
+function toggleSettings() {
+  if (!state.showSettings && state.playing) stopAuto();
+  state.showSettings = !state.showSettings; render();
+}
 function closeSettings(e) { if (e.target === e.currentTarget) { state.showSettings = false; render(); } }
 function updateRepeatCount(val) {
   const n = Math.max(1, Math.min(10, parseInt(val) || 3));
@@ -1366,7 +1229,6 @@ function speakExample() {
   render();
   speak(w.ex, () => {
     state.exSpeaking = false;
-    stopBackgroundAudio();
     render();
   });
 }
