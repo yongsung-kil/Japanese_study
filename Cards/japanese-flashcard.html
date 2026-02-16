@@ -150,6 +150,9 @@ body {
   box-shadow:0 4px 25px var(--accent-glow);
 }
 .play-btn.playing { background:linear-gradient(135deg,var(--accent),var(--accent-soft)); }
+.play-icon { display:block; width:0; height:0; border-style:solid; border-width:10px 0 10px 18px; border-color:transparent transparent transparent #fff; margin-left:3px; }
+.pause-icon { display:flex; gap:5px; align-items:center; }
+.pause-icon span { display:block; width:5px; height:20px; background:#fff; border-radius:1px; }
 .eye-btn { background:none; border:none; font-size:22px; cursor:pointer; }
 .eye-btn.off { filter:grayscale(1) opacity(.4); }
 .progress-bar {
@@ -300,7 +303,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:26:32";
+const APP_VERSION = "v26.02.16.23:27:59";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1021,7 +1024,7 @@ function render() {
         <span class="speed-label">배속</span>
       </div>
       <button class="play-btn ${state.playing?'playing':''}" onclick="togglePlay()">
-        ${state.playing ? "⏸" : "▶"}
+        ${state.playing ? '<span class="pause-icon"><span></span><span></span></span>' : '<span class="play-icon"></span>'}
       </button>
       <div class="ctrl-col">
         <button class="eye-btn ${state.showMeaning?'':'off'}" onclick="toggleMeaning()">👁</button>
