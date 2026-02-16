@@ -303,7 +303,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:32:57";
+const APP_VERSION = "v26.02.16.23:34:54";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -900,6 +900,11 @@ function render() {
         <div class="${badgeClass}">${badgeText}</div>
       </div>`;
     }
+    // 카테고리 전체 초기화 버튼
+    html += `<div style="padding:16px 0 8px;display:flex;gap:8px;justify-content:center">
+      <button onclick="resetCatLearned()" style="background:none;border:1px solid rgba(0,210,211,.3);color:var(--success);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px">✓ 외운 단어 전체 초기화</button>
+      <button onclick="resetCatDifficult()" style="background:none;border:1px solid rgba(255,215,0,.3);color:#ffd700;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px">★ 어려운 단어 전체 초기화</button>
+    </div>`;
     html += `</div>`;
     app.innerHTML = html;
     document.getElementById("settings-root").innerHTML = "";
@@ -1306,6 +1311,32 @@ function toggleHideLearned() {
     if (state.idx >= visible.length) state.idx = Math.max(0, visible.length - 1);
   }
   render();
+}
+function resetCatLearned() {
+  const cat = CATEGORIES[state.catIdx];
+  let count = 0;
+  cat.days.forEach(d => {
+    (WORD_DATA[d]?.words || []).forEach(w => { if (state.bookmarks[d+"-"+w.h]) count++; });
+  });
+  if (count === 0) { alert("초기화할 외운 단어가 없어요."); return; }
+  if (!confirm(`${cat.title} 전체\n외운 단어 ✓ ${count}개를 초기화할까요?`)) return;
+  cat.days.forEach(d => {
+    (WORD_DATA[d]?.words || []).forEach(w => { delete state.bookmarks[d+"-"+w.h]; });
+  });
+  saveBookmarks(); render();
+}
+function resetCatDifficult() {
+  const cat = CATEGORIES[state.catIdx];
+  let count = 0;
+  cat.days.forEach(d => {
+    (WORD_DATA[d]?.words || []).forEach(w => { if (state.difficult[d+"-"+w.h]) count++; });
+  });
+  if (count === 0) { alert("초기화할 어려운 단어가 없어요."); return; }
+  if (!confirm(`${cat.title} 전체\n어려운 단어 ★ ${count}개를 초기화할까요?`)) return;
+  cat.days.forEach(d => {
+    (WORD_DATA[d]?.words || []).forEach(w => { delete state.difficult[d+"-"+w.h]; });
+  });
+  saveDifficult(); render();
 }
 function resetDayLearned() {
   const day = state.day;
