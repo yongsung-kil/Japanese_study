@@ -139,7 +139,7 @@ WORD_DATA_MIKMAT[19] = { title: "10화 단어 (바닷가 1열, 해산물 뷔페 
     {h:"ねん",k:"年",r:"nen",m:"년/해",ex:"50年以上の歴史がある",exm:"50년 이상의 역사가 있다"},
     {h:"こじんてき",k:"個人的",r:"kojinteki",m:"개인적",ex:"個人的な見解です",exm:"개인적인 견해입니다"},
     {h:"ただしい",k:"正しい",r:"tadashii",m:"올바른/맞는",ex:"おすしの正しい食べ方",exm:"스시의 올바른 먹는 방법"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[20] = { title: "10화 표현 (바닷가 1열, 해산물 뷔페 수산시장)", words: [
     {h:"韓国人結構来てるんだ",r:"kankokujin kekkou kiteru n da",m:"한국인이 꽤 오는구나"},
     {h:"飛行機でも１時間もかからないし",r:"hikouki demo ichijikan mo kakaranai shi",m:"비행기로도 1시간도 안 걸리고"},
@@ -214,4 +214,4 @@ WORD_DATA_MIKMAT[20] = { title: "10화 표현 (바닷가 1열, 해산물 뷔페 
     {h:"お元気で",r:"ogenki de",m:"건강하세요",ex:"お元気でおばちゃん",exm:"건강하세요 아줌마"},
     {h:"とてもいい所だ",r:"totemo ii tokoro da",m:"아주 좋은 곳이야"},
     {h:"これはいいスープだ",r:"kore wa ii suupu da",m:"이건 좋은 수프다"},
-  ];
+  ]};

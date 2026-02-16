@@ -150,7 +150,7 @@ WORD_DATA_MIKMAT[3] = { title: "2화 단어 (일본에서 가장 비싼 치즈�
     {h:"みっつ",k:"三つ",r:"mittsu",m:"셋"},
     {h:"せん",k:"千",r:"sen",m:"천",ex:"１５８０円",exm:"1,580엔"},
     {h:"ひゃく",k:"百",r:"hyaku",m:"백"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[4] = { title: "2화 표현 (일본에서 가장 비싼 치즈케이크)", words: [
     {h:"いらっしゃいませ",r:"irasshaimase",m:"어서 오세요"},
     {h:"ありがとうございます",r:"arigatou gozaimasu",m:"감사합니다 (격식)"},
@@ -208,4 +208,4 @@ WORD_DATA_MIKMAT[4] = { title: "2화 표현 (일본에서 가장 비싼 치즈�
     {h:"来た",r:"kita",m:"왔다/나왔다",ex:"来た",exm:"왔다"},
     {h:"まっちげ兄さんにお礼を言いたい",r:"macchige niisan ni orei wo iitai",m:"맛찌개 형님에게 감사를 전하고 싶다"},
     {h:"ミッチョッタ ミッチョッタ",r:"micchotta micchotta",m:"미쳤다, 미쳤다",ex:"ミッチョッタ ミッチョッタ",exm:"미쳤다, 미쳤다"},
-  ];
+  ]};

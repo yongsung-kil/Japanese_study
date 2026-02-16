@@ -167,7 +167,7 @@ WORD_DATA_MIKMAT[7] = { title: "4화 단어 (최고의 술안주, 오마카세 �
     {h:"きせつ",k:"季節",r:"kisetsu",m:"계절"},
     {h:"やさい",k:"野菜",r:"yasai",m:"채소"},
     {h:"さかな",k:"魚",r:"sakana",m:"생선/물고기"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[8] = { title: "4화 표현 (최고의 술안주, 오마카세 야키토리)", words: [
     {h:"お出しさせていただいてよろしいですか",r:"odashi sasete itadaite yoroshii desu ka",m:"(요리를) 내드려도 될까요?"},
     {h:"焼き鳥はお酒の…",r:"yakitori wa osake no...",m:"야키토리는 술의… (술안주)"},
@@ -237,4 +237,4 @@ WORD_DATA_MIKMAT[8] = { title: "4화 표현 (최고의 술안주, 오마카세 �
     {h:"どうぞ",r:"douzo",m:"어서요/자, 여기요"},
     {h:"ありがとうございます",r:"arigatou gozaimasu",m:"감사합니다"},
     {h:"失礼いたします",r:"shitsurei itashimasu",m:"실례하겠습니다"},
-  ];
+  ]};

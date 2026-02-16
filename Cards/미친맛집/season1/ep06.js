@@ -130,7 +130,7 @@ WORD_DATA_MIKMAT[11] = { title: "6화 단어 (40년 단골 맛집, 노포 중식
     {h:"すき",k:"好き",r:"suki",m:"좋아하다",ex:"このラーメン好きです",exm:"이 라멘 좋아해요"},
     {h:"だめ",r:"dame",m:"안 되다",ex:"僕も太麺だめなの",exm:"나도 굵은 면은 안 돼"},
     {h:"けっこう",k:"結構",r:"kekkou",m:"꽤/상당히",ex:"結構多いんでしょう？",exm:"꽤 많죠?"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[12] = { title: "6화 표현 (40년 단골 맛집, 노포 중식당)", words: [
     {h:"ごちゃごちゃしてて",r:"gochagocha shitete",m:"어수선하고/복잡하고"},
     {h:"出前持ってってたし",r:"demae mottetteta shi",m:"배달도 가져다줬고"},
@@ -194,4 +194,4 @@ WORD_DATA_MIKMAT[12] = { title: "6화 표현 (40년 단골 맛집, 노포 중식
     {h:"大丈夫(ケンチャナヨ)大丈夫",r:"daijoubu (kenchanayo) daijoubu",m:"괜찮아요, 괜찮아",ex:"大丈夫大丈夫",exm:"괜찮아, 괜찮아"},
     {h:"餃子欲しい人",r:"gyouza hoshii hito",m:"만두 원하는 사람",ex:"餃子欲しい人4つ4つ",exm:"만두 원하는 사람 4개 4개"},
     {h:"次は韓国で何を食べるのか",r:"tsugi wa kankoku de nani wo taberu no ka",m:"다음은 한국에서 뭘 먹을 건가",ex:"次は韓国で何を食べるのか",exm:"다음은 한국에서 뭘 먹을 건가"},
-  ];
+  ]};

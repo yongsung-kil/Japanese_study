@@ -168,7 +168,7 @@ WORD_DATA_MIKMAT[1] = { title: "1화 단어 (마츠시게의 13년 단골)", wor
     {h:"いつつ",k:"五つ",r:"itsutsu",m:"다섯"},
     {h:"えん",k:"円",r:"en",m:"엔 (화폐)",ex:"拌三絲 ８００円",exm:"반산스 800엔"},
     {h:"なんにち",k:"何日",r:"nannichi",m:"며칠",ex:"ちょっと何日か",exm:"며칠 정도"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[2] = { title: "1화 표현 (마츠시게의 13년 단골)", words: [
     {h:"いらっしゃいませ",r:"irasshaimase",m:"어서 오세요"},
     {h:"かしこまりました",r:"kashikomarimashita",m:"알겠습니다 (격식)"},
@@ -231,4 +231,4 @@ WORD_DATA_MIKMAT[2] = { title: "1화 표현 (마츠시게의 13년 단골)", wor
     {h:"全部うまそうだ",r:"zenbu umasou da",m:"전부 맛있어 보인다",ex:"全部うまそうだ",exm:"전부 맛있어 보인다"},
     {h:"まずは東京から",r:"mazu wa toukyou kara",m:"먼저 도쿄부터",ex:"まずは東京から味見します",exm:"먼저 도쿄부터 맛봅니다"},
     {h:"あじみします",k:"味見します",r:"ajimi shimasu",m:"맛봅니다",ex:"まずは東京から味見します",exm:"먼저 도쿄부터 맛봅니다"},
-  ];
+  ]};

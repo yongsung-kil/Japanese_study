@@ -138,7 +138,7 @@ WORD_DATA_MIKMAT[23] = { title: "12화 단어 (칼국수는 거들 뿐)", words:
     {h:"でも",r:"demo",m:"하지만/그래도",ex:"でも僕は大丈夫",exm:"하지만 난 괜찮아"},
     {h:"やばい",r:"yabai",m:"대박/미쳤다",ex:"やばいやばい",exm:"대박, 대박"},
     {h:"よかった",r:"yokatta",m:"다행이다/좋았다",ex:"よかった",exm:"다행이다"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[24] = { title: "12화 표현 (칼국수는 거들 뿐)", words: [
     {h:"こんだけお客さんがね",r:"kondake okyakusan ga ne",m:"이 정도로 손님이 많네"},
     {h:"親子3世代で来るんだ",r:"oyako san sedai de kurun da",m:"3대가 함께 오는구나"},
@@ -202,4 +202,4 @@ WORD_DATA_MIKMAT[24] = { title: "12화 표현 (칼국수는 거들 뿐)", words:
     {h:"やばいやばい",r:"yabai yabai",m:"대박, 대박"},
     {h:"ほんとですか？わあうれしい",r:"honto desu ka? waa ureshii",m:"정말요? 와, 기뻐요"},
     {h:"そんな大した味じゃないじゃんってなるかもしれません",r:"sonna taishita aji ja nai jan tte naru kamo shiremasen",m:"'그렇게 대단한 맛도 아니잖아'라고 될 수도 있어요"},
-  ];
+  ]};

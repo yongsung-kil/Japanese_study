@@ -125,7 +125,7 @@ WORD_DATA_MIKMAT[9] = { title: "5화 단어 (해질녘 후지산과 환상적인
     {h:"かたい",k:"固い",r:"katai",m:"딱딱한/굳은",ex:"固めのプリンが好きです",exm:"딱딱한 푸딩을 좋아해요"},
     {h:"やわらかい",k:"柔らかい",r:"yawarakai",m:"부드러운/물렁한",ex:"柔らかいプリンですね",exm:"부드러운 푸딩이네요"},
     {h:"なめらか",k:"滑らか",r:"nameraka",m:"부드러운/매끄러운",ex:"プリンが滑らかでおいしい",exm:"푸딩이 부드럽고 맛있다"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[10] = { title: "5화 표현 (해질녘 후지산과 환상적인 푸딩)", words: [
     {h:"デートみたいなもんですよ",r:"deeto mitai na mon desu yo",m:"데이트 같은 거잖아요"},
     {h:"正装して",r:"seisou shite",m:"정장 입고"},
@@ -172,4 +172,4 @@ WORD_DATA_MIKMAT[10] = { title: "5화 표현 (해질녘 후지산과 환상적�
     {h:"こんな場所で食べて日が暮れたら",r:"konna basho de tabete hi ga kuretara",m:"이런 곳에서 먹으면서 해가 지면"},
     {h:"日本人の耳からすると",r:"nihonjin no mimi kara suru to",m:"일본인의 귀에는"},
     {h:"えっほんとですか",r:"e honto desu ka",m:"엣 정말이에요?"},
-  ];
+  ]};

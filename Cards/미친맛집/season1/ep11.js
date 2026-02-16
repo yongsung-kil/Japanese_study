@@ -134,7 +134,7 @@ WORD_DATA_MIKMAT[21] = { title: "11화 단어 (소년 마츠시게 소울푸드)
     {h:"すべて",r:"subete",m:"전부/모든 것",ex:"もうすべてが混沌となってきたでしょ",exm:"이제 전부 혼돈스러워졌지"},
     {h:"ほか",k:"他",r:"hoka",m:"다른/그 밖에",ex:"他に何があるかなあ",exm:"다른 거 뭐가 있을까"},
     {h:"むかし",k:"昔",r:"mukashi",m:"옛날/예전",ex:"昔からうちはこの小さなエビなんです",exm:"예전부터 우리는 이 작은 새우예요"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[22] = { title: "11화 표현 (소년 마츠시게 소울푸드)", words: [
     {h:"全然違うんですよ",r:"zenzen chigaun desu yo",m:"완전 다르거든요"},
     {h:"使わないんだ",r:"tsukawanain da",m:"안 쓰는구나"},
@@ -219,4 +219,4 @@ WORD_DATA_MIKMAT[22] = { title: "11화 표현 (소년 마츠시게 소울푸드)
     {h:"そう言っていただけると私も",r:"sou itte itadakeru to watashi mo",m:"그렇게 말해주시면 저도"},
     {h:"韓国でまだはやってないの",r:"kankoku de mada hayatte nai no",m:"한국에서 아직 유행 안 하는 거야?"},
     {h:"やっぱり来てくれた",r:"yappari kite kureta",m:"역시 와 줬구나"},
-  ];
+  ]};

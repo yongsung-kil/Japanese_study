@@ -116,7 +116,7 @@ WORD_DATA_MIKMAT[25] = { title: "13화 단어 (곱창계의 에르메스)", word
     {h:"ねえ",r:"nee",m:"저기/있잖아",ex:"ねえ",exm:"있잖아"},
     {h:"チャン",r:"chan",m:"짠 (건배)",ex:"チャンチャン",exm:"짠, 짠"},
     {h:"オッケー",r:"okkee",m:"오케이/좋아",ex:"オッケーですオッケーです",exm:"좋아요, 좋아요"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[26] = { title: "13화 표현 (곱창계의 에르메스)", words: [
     {h:"初めての牛コプチャン",r:"hajimete no ushi kopuchan",m:"처음 먹는 소곱창"},
     {h:"つばが出てくる",r:"tsuba ga dete kuru",m:"침이 나오다"},
@@ -176,4 +176,4 @@ WORD_DATA_MIKMAT[26] = { title: "13화 표현 (곱창계의 에르메스)", word
     {h:"おいしいと思うよこの脂好きな人は",r:"oishii to omou yo kono abura suki na hito wa",m:"맛있다고 생각해, 이 기름 좋아하는 사람은"},
     {h:"ほっといたら",r:"hottoitara",m:"가만 놔두면"},
     {h:"フーフーフー",r:"fuu fuu fuu",m:"후후후 (뜨거운 것 식히는 소리)"},
-  ];
+  ]};

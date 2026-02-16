@@ -164,7 +164,7 @@ WORD_DATA_MIKMAT[5] = { title: "3화 단어 (눈물 나는 맛, 레전드 야키
     {h:"あじ",k:"味",r:"aji",m:"맛"},
     {h:"りょうり",k:"料理",r:"ryouri",m:"요리"},
     {h:"てんいん",k:"店員",r:"ten'in",m:"점원",ex:"どうも",exm:"어서 오세요"},
-  ];
+  ]};
 WORD_DATA_MIKMAT[6] = { title: "3화 표현 (눈물 나는 맛, 레전드 야키니쿠)", words: [
     {h:"店の一部を貸し切って撮影",r:"mise no ichibu wo kashikitte satsuei",m:"가게 일부를 빌려서 촬영"},
     {h:"前頼んだやつ食べたい",r:"mae tanonda yatsu tabetai",m:"전에 시킨 거 먹고 싶어"},
@@ -230,4 +230,4 @@ WORD_DATA_MIKMAT[6] = { title: "3화 표현 (눈물 나는 맛, 레전드 야키
     {h:"いくらですか",r:"ikura desu ka",m:"얼마인가요?"},
     {h:"お水ください",r:"omizu kudasai",m:"물 주세요"},
     {h:"どうぞ",r:"douzo",m:"어서요/자, 여기요"},
-  ];
+  ]};
