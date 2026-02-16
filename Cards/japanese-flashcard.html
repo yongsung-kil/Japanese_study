@@ -303,7 +303,7 @@ body {
 <script>const WORD_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.16.23:30:14";
+const APP_VERSION = "v26.02.16.23:32:57";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -411,6 +411,32 @@ function toggleDifficult() {
   else { state.difficult[key] = { day, h:w.h, r:w.r, m:w.m, k:w.k||"" }; }
   saveDifficult(); render();
 }
+function getLearnedWords() {
+  const all = [];
+  for (const d of DAYS) {
+    WORD_DATA[d].words.forEach(w => {
+      if (state.bookmarks[d+"-"+w.h]) all.push({ ...w, day: d });
+    });
+  }
+  return all;
+}
+function getLearnedCount() {
+  return Object.keys(state.bookmarks).length;
+}
+function startListeningLearned() {
+  const all = getLearnedWords();
+  if (all.length === 0) { alert("외운 단어가 없어요!\n학습 중 ✓을 눌러 추가하세요."); return; }
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  state.listenWords = all; state.listenIdx = 0;
+  state.listenType = "learned";
+  state.mode = "listening"; state.showMeaning = false;
+  pushMode("listening");
+  stopAuto(); render();
+  setTimeout(() => speakOnce(), 300);
+}
 function startListening() {
   const all = getDifficultWords();
   if (all.length === 0) { alert("어려운 단어가 없어요!\n학습 중 ★을 눌러 추가하세요."); return; }
@@ -419,6 +445,7 @@ function startListening() {
     [all[i], all[j]] = [all[j], all[i]];
   }
   state.listenWords = all; state.listenIdx = 0;
+  state.listenType = "difficult";
   state.mode = "listening"; state.showMeaning = false;
   pushMode("listening");
   stopAuto(); render();
@@ -803,6 +830,24 @@ function render() {
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
     html += `<div class="menu-list">`;
+    // 듣기퀴즈 (외운 단어)
+    const lnCount = getLearnedCount();
+    html += `<div class="cat-item" onclick="startListeningLearned()" style="border-color:rgba(0,210,211,.2)">
+      <div>
+        <div class="cat-title" style="color:var(--success)">🎧 외운 단어 퀴즈</div>
+        <div class="cat-sub">외운 단어 듣기 연습 · ✓ ${lnCount}단어</div>
+      </div>
+      <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${lnCount}</div>
+    </div>`;
+    // 듣기퀴즈 (어려운 단어)
+    const dfCount = getDifficultCount();
+    html += `<div class="cat-item" onclick="startListening()" style="border-color:rgba(255,215,0,.2)">
+      <div>
+        <div class="cat-title" style="color:#ffd700">🎧 어려운 단어 퀴즈</div>
+        <div class="cat-sub">어려운 단어 듣기 연습 · ★ ${dfCount}단어</div>
+      </div>
+      <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
+    </div>`;
     CATEGORIES.forEach((cat, ci) => {
       const totalW = cat.days.reduce((s,d) => s + (WORD_DATA[d]?.words.length||0), 0);
       const learnedW = cat.days.reduce((s,d) => {
@@ -819,15 +864,6 @@ function render() {
         <div class="${badgeClass}">${badgeText}</div>
       </div>`;
     });
-    // 듣기퀴즈 카테고리
-    const dfCount = getDifficultCount();
-    html += `<div class="cat-item" onclick="startListening()" style="border-color:rgba(255,215,0,.2)">
-      <div>
-        <div class="cat-title" style="color:#ffd700">🎧 듣기퀴즈</div>
-        <div class="cat-sub">어려운 단어 듣기 연습 · ★ ${dfCount}단어</div>
-      </div>
-      <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
-    </div>`;
     html += `</div>`;
     app.innerHTML = html;
     document.getElementById("settings-root").innerHTML = "";
@@ -875,11 +911,11 @@ function render() {
     html += `<div class="header">
       <div>
         <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo" style="color:#ffd700">🎧</span><span class="logo-sub">듣기퀴즈</span>
+        <span class="logo" style="color:${state.listenType==='learned'?'var(--success)':'#ffd700'}">🎧</span><span class="logo-sub">${state.listenType==='learned'?'외운 단어 퀴즈':'어려운 단어 퀴즈'}</span>
       </div>
       <button class="refresh-btn" onclick="doRefresh()">↻</button>
     </div>`;
-    html += `<div class="info">어려운 단어 · ${state.listenIdx+1}/${state.listenWords.length}</div>`;
+    html += `<div class="info">${state.listenType==='learned'?'외운 단어':'어려운 단어'} · ${state.listenIdx+1}/${state.listenWords.length}</div>`;
   } else {
     html += `<div class="header">
       <div>
