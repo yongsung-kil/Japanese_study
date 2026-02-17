@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.18:57:13";
+const APP_VERSION = "v26.02.17.18:58:09";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1171,7 +1171,6 @@ function render() {
     </div>`;
     html += `<div class="menu-list">`;
     // 단어 섹션
-    html += `<div style="padding:8px 4px 4px;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:1px">단어</div>`;
     html += `<div class="cat-item" onclick="startListeningLearned()" style="border-color:rgba(0,210,211,.2)">
       <div>
         <div class="cat-title" style="color:var(--success)">✓ 외운 단어</div>
@@ -1187,7 +1186,6 @@ function render() {
       <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
     </div>`;
     // 문장분석 섹션
-    html += `<div style="padding:12px 4px 4px;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:1px">문장 분석</div>`;
     html += `<div class="cat-item" onclick="startGrammarListeningLearned()" style="border-color:rgba(0,210,211,.2)">
       <div>
         <div class="cat-title" style="color:var(--success)">✓ 외운 문장</div>
