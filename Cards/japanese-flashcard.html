@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.22:06:42";
+const APP_VERSION = "v26.02.17.22:09:16";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1116,7 +1116,7 @@ function doRefresh() { location.reload(); }
 
 function renderHeader(backFn, info) {
   const infoHtml = info ? ` <span style="font-weight:400;font-size:14px;color:var(--muted)">[${info}]</span>` : '';
-  return `<div class="header" style="padding:12px 16px 4px">
+  return `<div class="header" style="padding:16px 16px 8px">
     <div style="display:flex;align-items:center">
       <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
       <span class="menu-header-title" style="font-size:20px">${state.pageTitle}${infoHtml}</span>
