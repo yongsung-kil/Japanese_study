@@ -250,7 +250,7 @@ body {
 }
 .settings-unit { font-size:12px; color:var(--muted); }
 .menu-list {
-  width:100%; flex:1; overflow-y:auto; padding:0 16px 16px;
+  width:100%; flex:1; overflow-y:auto; padding:0 16px 16px; margin-top:12px;
   scrollbar-width:none;
 }
 .menu-list::-webkit-scrollbar { display:none; }
@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.22:09:51";
+const APP_VERSION = "v26.02.17.22:12:14";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1140,7 +1140,7 @@ function render() {
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
-    html += `<div class="menu-list" style="margin-top:12px">`;
+    html += `<div class="menu-list">`;
     // 퀴즈 (하위 메뉴로 이동)
     const lnCount = getLearnedCount();
     const dfCount = getDifficultCount();
