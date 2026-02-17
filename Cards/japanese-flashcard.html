@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>[1,2,3,4,5,6,7,8,9,10,11,13].forEach(i=>{document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');});</script>
 <script>
-const APP_VERSION = "v26.02.18.00:26:21";
+const APP_VERSION = "v26.02.18.00:30:26";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -787,7 +787,12 @@ function speakLocal(text, cb) {
   setTimeout(() => { if (!done && !window.speechSynthesis.speaking) finish(); }, 3000);
 }
 
+// PC 판별 (모바일이 아니면 PC)
+const _isPC = !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
 // TTS 래퍼 (최소 재생 시간 보장)
+// PC: speechSynthesis 우선 (Google TTS가 PC 브라우저에서 불안정)
+// 모바일: Google TTS 우선 (음질 우수 + 백그라운드 대응)
 function speak(text, cb) {
   const t0 = Date.now();
   const minMs = Math.max(500, text.length * 150 / state.speed);
@@ -796,11 +801,18 @@ function speak(text, cb) {
     if (d < minMs) playDelayAudio(minMs - d, cb);
     else cb();
   } : null;
-  speakGoogleTTS(text, safeCb);
+  if (_isPC) speakLocal(text, safeCb);
+  else speakGoogleTTS(text, safeCb);
 }
 
-// 한국어 TTS (Google TTS, tl=ko) + SpeechSynthesis 폴백
+// 한국어 TTS
+// PC: speechSynthesis 우선, 모바일: Google TTS 우선
 function speakKo(text, cb) {
+  if (_isPC) {
+    const clean = text.replace(/^\[.*?\]\s*/, '');
+    speakLocalKo(clean, cb);
+    return;
+  }
   cancelSpeak();
   const mySeq = ++speakSeq;
   let done = false;
