@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.12:00:00";
+const APP_VERSION = "v26.02.17.13:00:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -480,6 +480,8 @@ let state = {
   shuffleHistory: [], // listening 모드 랜덤 히스토리
   grammarKey: 1, // 문장 분석 현재 에피소드
   grammarIdx: 0, // 문장 분석 현재 문장 인덱스
+  grammarLearned: JSON.parse(localStorage.getItem("jp-grammar-learned") || "{}"),
+  grammarDifficult: JSON.parse(localStorage.getItem("jp-grammar-difficult") || "{}"),
 };
 
 let playId = 0;
@@ -564,6 +566,50 @@ function getLearnedWords() {
 function getLearnedCount() {
   return Object.keys(state.bookmarks).length;
 }
+
+// === 문장분석 외운/어려운 관리 ===
+function gKey(epKey, idx) { return "g-" + epKey + "-" + idx; }
+function saveGrammarLearned() { localStorage.setItem("jp-grammar-learned", JSON.stringify(state.grammarLearned)); }
+function saveGrammarDifficult() { localStorage.setItem("jp-grammar-difficult", JSON.stringify(state.grammarDifficult)); }
+function isGrammarLearned(epKey, idx) { return !!state.grammarLearned[gKey(epKey, idx)]; }
+function isGrammarDifficult(epKey, idx) { return !!state.grammarDifficult[gKey(epKey, idx)]; }
+function toggleGrammarLearned() {
+  const k = gKey(state.grammarKey, state.grammarIdx);
+  if (state.grammarLearned[k]) delete state.grammarLearned[k];
+  else state.grammarLearned[k] = true;
+  saveGrammarLearned(); render();
+}
+function toggleGrammarDifficult() {
+  const k = gKey(state.grammarKey, state.grammarIdx);
+  if (state.grammarDifficult[k]) delete state.grammarDifficult[k];
+  else state.grammarDifficult[k] = true;
+  saveGrammarDifficult(); render();
+}
+function getGrammarLearnedCount() { return Object.keys(state.grammarLearned).length; }
+function getGrammarDifficultCount() { return Object.keys(state.grammarDifficult).length; }
+function getGrammarLearnedSentences() {
+  const all = [];
+  for (const epKey of GRAMMAR_KEYS) {
+    const data = GRAMMAR_DATA[epKey];
+    if (!data) continue;
+    data.sentences.forEach((s, idx) => {
+      if (state.grammarLearned[gKey(epKey, idx)]) all.push({ ...s, epKey, idx });
+    });
+  }
+  return all;
+}
+function getGrammarDifficultSentences() {
+  const all = [];
+  for (const epKey of GRAMMAR_KEYS) {
+    const data = GRAMMAR_DATA[epKey];
+    if (!data) continue;
+    data.sentences.forEach((s, idx) => {
+      if (state.grammarDifficult[gKey(epKey, idx)]) all.push({ ...s, epKey, idx });
+    });
+  }
+  return all;
+}
+
 function startListeningLearned() {
   const all = getLearnedWords();
   if (all.length === 0) { alert("외운 단어가 없어요!\n학습 중 ✓을 눌러 추가하세요."); return; }
@@ -1031,6 +1077,12 @@ document.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft") grammarPrev();
     return;
   }
+  if (state.mode === "grammarListening") {
+    if (e.key === "ArrowRight") grammarListenNext();
+    if (e.key === "ArrowLeft") grammarListenPrev();
+    if (e.key === " ") { e.preventDefault(); state.showMeaning = !state.showMeaning; render(); }
+    return;
+  }
   if (e.key === "ArrowRight") goNext();
   if (e.key === "ArrowLeft") goPrev();
   if (e.key === " ") { e.preventDefault(); togglePlay(); }
@@ -1057,23 +1109,18 @@ function render() {
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
     html += `<div class="menu-list">`;
-    // 듣기퀴즈 (외운 단어)
+    // 퀴즈 (하위 메뉴로 이동)
     const lnCount = getLearnedCount();
-    html += `<div class="cat-item" onclick="startListeningLearned()" style="border-color:rgba(0,210,211,.2)">
-      <div>
-        <div class="cat-title" style="color:var(--success)">🎧 외운 단어 퀴즈</div>
-        <div class="cat-sub">외운 단어 듣기 연습 · ✓ ${lnCount}단어</div>
-      </div>
-      <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${lnCount}</div>
-    </div>`;
-    // 듣기퀴즈 (어려운 단어)
     const dfCount = getDifficultCount();
-    html += `<div class="cat-item" onclick="startListening()" style="border-color:rgba(255,215,0,.2)">
+    const glCount = getGrammarLearnedCount();
+    const gdCount = getGrammarDifficultCount();
+    const quizTotal = lnCount + dfCount + glCount + gdCount;
+    html += `<div class="cat-item" onclick="openQuizMenu()" style="border-color:rgba(0,210,211,.2)">
       <div>
-        <div class="cat-title" style="color:#ffd700">🎧 어려운 단어 퀴즈</div>
-        <div class="cat-sub">어려운 단어 듣기 연습 · ★ ${dfCount}단어</div>
+        <div class="cat-title" style="color:var(--success)">🎧 퀴즈</div>
+        <div class="cat-sub">단어 · 문장분석 듣기 연습</div>
       </div>
-      <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
+      <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${quizTotal}</div>
     </div>`;
     CATEGORIES.forEach((cat, ci) => {
       const totalW = cat.days.reduce((s,d) => s + dayWords(d).length, 0);
@@ -1097,6 +1144,126 @@ function render() {
     return;
   }
 
+  // 퀴즈 하위 메뉴
+  if (state.mode === "quizMenu") {
+    const lnCount = getLearnedCount();
+    const dfCount = getDifficultCount();
+    const glCount = getGrammarLearnedCount();
+    const gdCount = getGrammarDifficultCount();
+    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
+          <div class="menu-header-title">🎧 퀴즈</div>
+        </div>
+        <div class="menu-header-sub" style="margin-left:28px">퀴즈 유형을 선택하세요</div>
+      </div>
+    </div>`;
+    html += `<div class="menu-list">`;
+    // 단어 섹션
+    html += `<div style="padding:8px 4px 4px;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:1px">단어</div>`;
+    html += `<div class="cat-item" onclick="startListeningLearned()" style="border-color:rgba(0,210,211,.2)">
+      <div>
+        <div class="cat-title" style="color:var(--success)">✓ 외운 단어</div>
+        <div class="cat-sub">외운 단어 듣기 연습</div>
+      </div>
+      <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${lnCount}</div>
+    </div>`;
+    html += `<div class="cat-item" onclick="startListening()" style="border-color:rgba(255,215,0,.2)">
+      <div>
+        <div class="cat-title" style="color:#ffd700">★ 어려운 단어</div>
+        <div class="cat-sub">어려운 단어 듣기 연습</div>
+      </div>
+      <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
+    </div>`;
+    // 문장분석 섹션
+    html += `<div style="padding:12px 4px 4px;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:1px">문장 분석</div>`;
+    html += `<div class="cat-item" onclick="startGrammarListeningLearned()" style="border-color:rgba(0,210,211,.2)">
+      <div>
+        <div class="cat-title" style="color:var(--success)">✓ 외운 문장</div>
+        <div class="cat-sub">외운 문장 듣기 연습</div>
+      </div>
+      <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${glCount}</div>
+    </div>`;
+    html += `<div class="cat-item" onclick="startGrammarListeningDifficult()" style="border-color:rgba(255,215,0,.2)">
+      <div>
+        <div class="cat-title" style="color:#ffd700">★ 어려운 문장</div>
+        <div class="cat-sub">어려운 문장 듣기 연습</div>
+      </div>
+      <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${gdCount}</div>
+    </div>`;
+    html += `</div>`;
+    app.innerHTML = html;
+    document.getElementById("settings-root").innerHTML = "";
+    return;
+  }
+
+  // 문장분석 듣기 퀴즈 모드
+  if (state.mode === "grammarListening") {
+    const all = state.grammarListenWords || [];
+    const idx = state.grammarListenIdx || 0;
+    const s = all[idx];
+    const total = all.length;
+    const isLearned = s ? isGrammarLearned(s.epKey, s.idx) : false;
+    const isDiff = s ? isGrammarDifficult(s.epKey, s.idx) : false;
+    const typeLabel = state.grammarListenType === 'learned' ? '외운 문장' : '어려운 문장';
+    const typeColor = state.grammarListenType === 'learned' ? 'var(--success)' : '#ffd700';
+
+    html += `<div class="header">
+      <div>
+        <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
+        <span class="logo" style="color:${typeColor}">🎧</span><span class="logo-sub">${typeLabel} 퀴즈</span>
+      </div>
+    </div>`;
+    html += `<div class="info">${typeLabel} · ${idx+1}/${total}</div>`;
+
+    if (s) {
+      const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
+      html += `<div class="card-area${slideClass}" style="justify-content:center;align-items:center"
+        ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="grammarListenTE(event)">`;
+      state.slideDir = "";
+
+      // 외운/어려운 버튼
+      html += `<button class="bookmark-btn${isLearned?' active':''}" onclick="event.stopPropagation();toggleGrammarListenLearned()" style="top:12px;right:12px">${isLearned?'✓':'✓'}</button>`;
+      html += `<button class="difficult-btn${isDiff?' active':''}" onclick="event.stopPropagation();toggleGrammarListenDifficult()" style="top:12px;right:44px">${isDiff?'★':'☆'}</button>`;
+
+      // 일본어 문장
+      html += `<div class="hiragana" style="font-size:28px;line-height:1.6;letter-spacing:2px;cursor:pointer" onclick="speakGrammar('${s.jp.replace(/'/g,"\\'")}')">${s.jp}</div>`;
+
+      // 뜻 (탭하면 표시)
+      if (state.showMeaning) {
+        html += `<div class="meaning" onclick="state.showMeaning=false;render()">${s.meaning.replace(/ \/ /g, ' ')}</div>`;
+        // 끊어읽기
+        html += `<div class="grammar-chunk hira" style="font-size:13px;margin-top:4px">${renderGrammarChunkTappable(s.reading)}</div>`;
+      } else {
+        html += `<div class="meaning hidden" onclick="state.showMeaning=true;render()">탭하여 뜻 보기</div>`;
+      }
+
+      html += `</div>`; // card-area
+    }
+
+    // Progress
+    const pct = total > 0 ? ((idx + 1) / total * 100) : 0;
+    html += `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+
+    // Nav + 재생
+    html += `<div class="controls">
+      <div></div>
+      <button class="play-btn" onclick="if(state.grammarListenWords[state.grammarListenIdx])speakGrammar(state.grammarListenWords[state.grammarListenIdx].jp)">
+        <div class="play-icon"></div>
+      </button>
+      <div></div>
+    </div>`;
+    html += `<div class="nav-row">
+      <button class="nav-btn" onclick="grammarListenPrev()">← 이전</button>
+      <button class="nav-btn" onclick="grammarListenNext()">다음 →</button>
+    </div>`;
+
+    app.innerHTML = html;
+    document.getElementById("settings-root").innerHTML = "";
+    return;
+  }
+
   // 시즌 하위 메뉴 (단어 / 문장 분석)
   if (state.mode === "catSubMenu") {
     const cat = CATEGORIES[state.catIdx];
@@ -1104,6 +1271,12 @@ function render() {
     const learnedW = cat.days.reduce((s,d) => s + dayWords(d).filter(w => state.bookmarks[d+"-"+w.h]).length, 0);
     const wordPct = totalW > 0 ? Math.round(learnedW/totalW*100) : 0;
     const totalS = GRAMMAR_KEYS.reduce((s,k) => s + (GRAMMAR_DATA[k]?.sentences.length||0), 0);
+    const learnedS = GRAMMAR_KEYS.reduce((s,k) => {
+      const data = GRAMMAR_DATA[k];
+      if (!data) return s;
+      return s + data.sentences.filter((_, i) => isGrammarLearned(k, i)).length;
+    }, 0);
+    const grammarPct = totalS > 0 ? Math.round(learnedS/totalS*100) : 0;
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -1129,7 +1302,7 @@ function render() {
           <div class="cat-title" style="color:var(--accent)">📖 문장 분석</div>
           <div class="cat-sub">회차별 문장 · 단어 · 문법 분석</div>
         </div>
-        <div class="cat-badge">${totalS}문장</div>
+        <div class="${grammarPct === 100 ? 'cat-badge clean' : 'cat-badge'}">${grammarPct === 100 ? '완료' : grammarPct + '%'}</div>
       </div>`;
     }
     html += `</div>`;
@@ -1153,12 +1326,15 @@ function render() {
     for (const k of GRAMMAR_KEYS) {
       const data = GRAMMAR_DATA[k];
       if (!data) continue;
+      const glCnt = data.sentences.filter((_, i) => isGrammarLearned(k, i)).length;
+      const badgeClass = glCnt === data.sentences.length ? "menu-badge clean" : "menu-badge";
+      const badgeText = glCnt === data.sentences.length ? "완료" : "✓ " + glCnt + "/" + data.sentences.length;
       html += `<div class="menu-item" onclick="openGrammar(${k})">
         <div class="menu-item-left">
           <div class="menu-day" style="color:var(--accent)">EP ${String(k).padStart(2,'0')}</div>
           <div class="menu-title">${data.title}</div>
         </div>
-        <div class="menu-badge">${data.sentences.length}문장</div>
+        <div class="${badgeClass}">${badgeText}</div>
       </div>`;
     }
     html += `</div>`;
@@ -1184,9 +1360,15 @@ function render() {
 
     if (s) {
       const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
+      const gLearned = isGrammarLearned(state.grammarKey, state.grammarIdx);
+      const gDifficult = isGrammarDifficult(state.grammarKey, state.grammarIdx);
       html += `<div class="card-area${slideClass}" style="justify-content:flex-start;padding:16px 16px 12px;overflow:hidden"
         ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="grammarTE(event)">`;
       state.slideDir = "";
+
+      // 외운/어려운 체크 버튼
+      html += `<button class="bookmark-btn${gLearned?' active':''}" onclick="event.stopPropagation();toggleGrammarLearned()" style="top:12px;right:12px">${gLearned?'✓':'✓'}</button>`;
+      html += `<button class="difficult-btn${gDifficult?' active':''}" onclick="event.stopPropagation();toggleGrammarDifficult()" style="top:12px;right:44px">${gDifficult?'★':'☆'}</button>`;
 
       html += `<div class="grammar-card">`;
 
@@ -1857,6 +2039,87 @@ function cycleSpeed() {
   const i = speeds.indexOf(state.speed);
   state.speed = speeds[(i + 1) % speeds.length];
   render();
+}
+
+// === 퀴즈 메뉴 ===
+function openQuizMenu() {
+  state.mode = "quizMenu";
+  pushMode("quizMenu");
+  render();
+}
+
+// === 문장분석 퀴즈 ===
+function startGrammarListeningLearned() {
+  const all = getGrammarLearnedSentences();
+  if (all.length === 0) { alert("외운 문장이 없어요!\n문장 분석에서 ✓을 눌러 추가하세요."); return; }
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  state.grammarListenWords = all;
+  state.grammarListenIdx = 0;
+  state.grammarListenType = "learned";
+  state.mode = "grammarListening";
+  state.showMeaning = false;
+  pushMode("grammarListening");
+  stopAuto(); render();
+  setTimeout(() => speakGrammar(all[0].jp), 300);
+}
+function startGrammarListeningDifficult() {
+  const all = getGrammarDifficultSentences();
+  if (all.length === 0) { alert("어려운 문장이 없어요!\n문장 분석에서 ★을 눌러 추가하세요."); return; }
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  state.grammarListenWords = all;
+  state.grammarListenIdx = 0;
+  state.grammarListenType = "difficult";
+  state.mode = "grammarListening";
+  state.showMeaning = false;
+  pushMode("grammarListening");
+  stopAuto(); render();
+  setTimeout(() => speakGrammar(all[0].jp), 300);
+}
+function grammarListenNext() {
+  if (state.grammarListenIdx < state.grammarListenWords.length - 1) {
+    state.grammarListenIdx++;
+    state.showMeaning = false;
+    state.slideDir = "left";
+    render();
+    const s = state.grammarListenWords[state.grammarListenIdx];
+    if (s) setTimeout(() => speakGrammar(s.jp), 200);
+  }
+}
+function grammarListenPrev() {
+  if (state.grammarListenIdx > 0) {
+    state.grammarListenIdx--;
+    state.showMeaning = false;
+    state.slideDir = "right";
+    render();
+    const s = state.grammarListenWords[state.grammarListenIdx];
+    if (s) setTimeout(() => speakGrammar(s.jp), 200);
+  }
+}
+function grammarListenTE(e) {
+  const d = e.changedTouches[0].clientX - touchSX;
+  if (Math.abs(d) > 60) { d > 0 ? grammarListenPrev() : grammarListenNext(); }
+}
+function toggleGrammarListenLearned() {
+  const s = state.grammarListenWords[state.grammarListenIdx];
+  if (!s) return;
+  const k = gKey(s.epKey, s.idx);
+  if (state.grammarLearned[k]) delete state.grammarLearned[k];
+  else state.grammarLearned[k] = true;
+  saveGrammarLearned(); render();
+}
+function toggleGrammarListenDifficult() {
+  const s = state.grammarListenWords[state.grammarListenIdx];
+  if (!s) return;
+  const k = gKey(s.epKey, s.idx);
+  if (state.grammarDifficult[k]) delete state.grammarDifficult[k];
+  else state.grammarDifficult[k] = true;
+  saveGrammarDifficult(); render();
 }
 
 // === GRAMMAR ===
