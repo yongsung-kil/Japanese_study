@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a1a2e">
-<title>日本語 단어장</title>
+<title>日本語学習</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.22:12:14";
+const APP_VERSION = "v26.02.17.22:15:05";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1136,7 +1136,7 @@ function render() {
   if (state.mode === "categories") {
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
-        <div class="menu-header-title">日本語 단어장 <span style="font-size:10px;color:#ffd700;font-weight:700;letter-spacing:0">${APP_VERSION}</span></div>
+        <div class="menu-header-title">日本語学習 <span style="font-size:10px;color:#ffd700;font-weight:700;letter-spacing:0">${APP_VERSION}</span></div>
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
