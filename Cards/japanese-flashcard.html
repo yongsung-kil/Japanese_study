@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.18:47:13";
+const APP_VERSION = "v26.02.17.18:57:13";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1091,6 +1091,16 @@ document.addEventListener("keydown", e => {
 // === 새로고침 ===
 function doRefresh() { location.reload(); }
 
+function renderHeader(title, backFn) {
+  return `<div class="header" style="padding:12px 16px 4px">
+    <div style="display:flex;align-items:center">
+      <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
+      <span class="menu-header-title" style="font-size:20px">${title}</span>
+    </div>
+    <button class="refresh-btn" onclick="doRefresh()">↻</button>
+  </div>`;
+}
+
 // === RENDER ===
 function render() {
   const app = document.getElementById("app");
@@ -1209,13 +1219,8 @@ function render() {
     const typeLabel = state.grammarListenType === 'learned' ? '외운 문장' : '어려운 문장';
     const typeColor = state.grammarListenType === 'learned' ? 'var(--success)' : '#ffd700';
 
-    html += `<div class="header">
-      <div>
-        <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo" style="font-size:18px;color:${typeColor}">🎧</span><span class="logo-sub">${typeLabel} 퀴즈</span>
-      </div>
-    </div>`;
-    html += `<div class="info">${typeLabel} · ${idx+1}/${total}</div>`;
+    html += renderHeader(`${typeLabel} 퀴즈`, 'goCategories()');
+    html += `<div class="info">${idx+1}/${total}</div>`;
 
     if (s) {
       const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
@@ -1349,12 +1354,7 @@ function render() {
     const s = gData?.sentences[state.grammarIdx];
     const total = gData?.sentences.length || 0;
 
-    html += `<div class="header">
-      <div>
-        <button onclick="state.mode='grammarMenu';skipPopstate=true;history.back();render()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo" style="font-size:18px">📖</span><span class="logo-sub">${gData.title}</span>
-      </div>
-    </div>`;
+    html += renderHeader(gData.title, "state.mode='grammarMenu';skipPopstate=true;history.back();render()");
     html += `<div class="info">${state.grammarIdx+1} / ${total} 문장</div>`;
 
     if (s) {
@@ -1475,24 +1475,12 @@ function render() {
 
   // Header
   if (state.mode === "listening") {
-    html += `<div class="header">
-      <div>
-        <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo" style="font-size:18px;color:${state.listenType==='learned'?'var(--success)':'#ffd700'}">🎧</span><span class="logo-sub">${state.listenType==='learned'?'외운 단어 퀴즈':'어려운 단어 퀴즈'}</span>
-      </div>
-      <button class="refresh-btn" onclick="doRefresh()">↻</button>
-    </div>`;
-    html += `<div class="info">${state.listenType==='learned'?'외운 단어':'어려운 단어'} · ${state.listenIdx+1}/${state.listenWords.length}</div>`;
+    const _listenTitle = state.listenType==='learned'?'외운 단어 퀴즈':'어려운 단어 퀴즈';
+    html += renderHeader(_listenTitle, 'goCategories()');
+    html += `<div class="info">${state.listenIdx+1}/${state.listenWords.length}</div>`;
   } else {
-    const _cat = CATEGORIES[state.catIdx];
-    const _catLabel = _cat ? (_cat.title + (_cat.hasChildren ? ' 단어' : '')) : '단어장';
-    html += `<div class="header">
-      <div>
-        <button onclick="goMenu()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo" style="font-size:18px">📝</span><span class="logo-sub">${_catLabel}</span>
-      </div>
-      <button class="refresh-btn" onclick="doRefresh()">↻</button>
-    </div>`;
+    const _studyTitle = WORD_DATA[state.day]?.title || '단어장';
+    html += renderHeader(_studyTitle, 'goMenu()');
   }
 
   if (state.mode === "study") {
@@ -1506,7 +1494,7 @@ function render() {
     } else {
       infoCount = `${state.idx+1}/${words.length}`;
     }
-    html += `<div class="info">${WORD_DATA[state.day].title} · ${infoCount}</div>`;
+    html += `<div class="info">${infoCount}</div>`;
   }
 
   if (state.mode === "test") {
