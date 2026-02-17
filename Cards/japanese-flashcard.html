@@ -266,7 +266,7 @@ body {
 .menu-day {
   font-size:11px; color:var(--accent); font-weight:700; letter-spacing:1px;
 }
-.menu-title { font-size:15px; color:var(--text); font-weight:500; }
+.menu-title { font-size:17px; color:var(--text); font-weight:700; }
 .menu-badge {
   background:rgba(233,69,96,.15); border-radius:10px; padding:4px 10px;
   font-size:12px; color:var(--accent-soft); font-weight:500; white-space:nowrap;
@@ -292,7 +292,7 @@ body {
   border:1px solid rgba(233,69,96,.15); cursor:pointer; transition:all .2s;
 }
 .cat-item:active { transform:scale(.98); border-color:var(--accent); }
-.cat-title { font-size:18px; color:var(--text); font-weight:700; }
+.cat-title { font-size:20px; color:var(--text); font-weight:700; }
 .cat-sub { font-size:12px; color:var(--muted); margin-top:4px; }
 .cat-badge {
   background:rgba(233,69,96,.15); border-radius:12px; padding:6px 12px;
@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.21:51:16";
+const APP_VERSION = "v26.02.17.21:54:39";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1149,7 +1149,6 @@ function render() {
     html += `<div class="cat-item" onclick="openQuizMenu()" style="border-color:rgba(0,210,211,.2)">
       <div>
         <div class="cat-title" style="color:var(--success)">🎧 퀴즈</div>
-        <div class="cat-sub">단어 · 문장분석 듣기 연습</div>
       </div>
       <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${quizTotal}</div>
     </div>`;
@@ -1166,7 +1165,6 @@ function render() {
       html += `<div class="cat-item" onclick="openCategory(${ci})">
         <div>
           <div class="cat-title">${cat.title}</div>
-          <div class="cat-sub">${cat.subtitle} · ${dayCount} · ${totalW}단어</div>
         </div>
         <div class="${badgeClass}">${badgeText}</div>
       </div>`;
@@ -1196,14 +1194,12 @@ function render() {
     html += `<div class="cat-item" onclick="startListeningLearned()" style="border-color:rgba(0,210,211,.2)">
       <div>
         <div class="cat-title" style="color:var(--success)">✓ 외운 단어</div>
-        <div class="cat-sub">외운 단어 듣기 연습</div>
       </div>
       <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${lnCount}</div>
     </div>`;
     html += `<div class="cat-item" onclick="startListening()" style="border-color:rgba(255,215,0,.2)">
       <div>
         <div class="cat-title" style="color:#ffd700">★ 어려운 단어</div>
-        <div class="cat-sub">어려운 단어 듣기 연습</div>
       </div>
       <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
     </div>`;
@@ -1211,14 +1207,12 @@ function render() {
     html += `<div class="cat-item" onclick="startGrammarListeningLearned()" style="border-color:rgba(0,210,211,.2)">
       <div>
         <div class="cat-title" style="color:var(--success)">✓ 외운 문장</div>
-        <div class="cat-sub">외운 문장 듣기 연습</div>
       </div>
       <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${glCount}</div>
     </div>`;
     html += `<div class="cat-item" onclick="startGrammarListeningDifficult()" style="border-color:rgba(255,215,0,.2)">
       <div>
         <div class="cat-title" style="color:#ffd700">★ 어려운 문장</div>
-        <div class="cat-sub">어려운 문장 듣기 연습</div>
       </div>
       <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${gdCount}</div>
     </div>`;
@@ -1312,7 +1306,6 @@ function render() {
       html += `<div class="cat-item" onclick="openSeason(${ci})">
         <div>
           <div class="cat-title">${child.title}</div>
-          <div class="cat-sub">${child.subtitle} · ${cTotalW}단어</div>
         </div>
         <div class="${badgeClass}">${badgeText}</div>
       </div>`;
@@ -1352,7 +1345,6 @@ function render() {
     html += `<div class="cat-item" onclick="openCatWords()">
       <div>
         <div class="cat-title">📝 단어</div>
-        <div class="cat-sub">에피소드별 단어 학습 · ${cat.days.length}화 · ${totalW}단어</div>
       </div>
       <div class="${wordPct === 100 ? 'cat-badge clean' : 'cat-badge'}">${wordPct === 100 ? '완료' : wordPct + '%'}</div>
     </div>`;
@@ -1361,7 +1353,6 @@ function render() {
       html += `<div class="cat-item" onclick="openGrammarMenu()" style="border-color:rgba(233,69,96,.25)">
         <div>
           <div class="cat-title" style="color:var(--accent)">📖 문장 분석</div>
-          <div class="cat-sub">회차별 문장 · 단어 · 문법 분석</div>
         </div>
         <div class="${grammarPct === 100 ? 'cat-badge clean' : 'cat-badge'}">${grammarPct === 100 ? '완료' : grammarPct + '%'}</div>
       </div>`;
@@ -1512,10 +1503,8 @@ function render() {
       const learnedCnt = dw.filter(w => state.bookmarks[d + "-" + w.h]).length;
       const badgeClass = learnedCnt === total ? "menu-badge clean" : "menu-badge";
       const badgeText = learnedCnt === total ? "완료" : "✓ " + learnedCnt + "/" + total;
-      const dayLabel = cat.hasChildren ? '' : 'DAY ' + d;
       html += `<div class="menu-item" onclick="openDay(${d})">
         <div class="menu-item-left">
-          ${dayLabel ? `<div class="menu-day">${dayLabel}</div>` : ''}
           <div class="menu-title">${data.title}</div>
         </div>
         <div class="${badgeClass}">${badgeText}</div>
