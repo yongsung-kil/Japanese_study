@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>[1,2,3,4,5,6,7,8,9,10,11,13].forEach(i=>{document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');});</script>
 <script>
-const APP_VERSION = "v26.02.18.00:10:20";
+const APP_VERSION = "v26.02.18.00:26:21";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -660,7 +660,7 @@ let speakSeq = 0;
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    // AudioContext 해제 (Chrome/Edge)
+    // AudioContext 해제 (Chrome/Edge/Firefox)
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const buf = ctx.createBuffer(1, 1, 22050);
@@ -668,13 +668,12 @@ let speakSeq = 0;
       s.buffer = buf; s.connect(ctx.destination); s.start(0);
       ctx.resume().catch(() => {});
     } catch(e) {}
-    // ttsAudio 엘리먼트 잠금 해제 (무음 WAV 재생)
-    const origSrc = ttsAudio.src;
-    ttsAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-    ttsAudio.volume = 0;
-    ttsAudio.play().then(() => {
-      ttsAudio.pause(); ttsAudio.volume = 1; ttsAudio.src = origSrc || "";
-    }).catch(() => { ttsAudio.volume = 1; unlocked = false; });
+    // 별도 Audio 엘리먼트로 잠금 해제 (ttsAudio와 충돌 방지)
+    try {
+      const tmp = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
+      tmp.volume = 0;
+      tmp.play().catch(() => { unlocked = false; });
+    } catch(e) {}
     document.removeEventListener('click', unlock, true);
     document.removeEventListener('touchstart', unlock, true);
   }
@@ -743,7 +742,7 @@ function speakGoogleTTS(text, cb) {
   prefetchTTS(getNextWordText());
 
   ttsAudio.onended = () => onDone(false);
-  ttsAudio.onerror = () => onDone(true);
+  ttsAudio.onerror = (e) => { console.warn("[TTS] audio error:", e); onDone(true); };
   ttsAudio.loop = false;
   ttsAudio.volume = 1.0;
   ttsAudio.playbackRate = state.speed;
@@ -753,33 +752,37 @@ function speakGoogleTTS(text, cb) {
   if (ttsBlobs[text]) {
     ttsAudio.src = ttsBlobs[text];
     ttsAudio.currentTime = 0;
-    ttsAudio.play().catch(() => onDone(true));
+    ttsAudio.play().catch(e => { console.warn("[TTS] cached play fail:", e.message); onDone(true); });
   } else {
     // 첫 재생: 즉시 play() 시도 (PC 브라우저 Autoplay 대응)
-    // canplay 대기 시 사용자 제스처 컨텍스트가 끊겨 재생 차단됨
     ttsAudio.src = directUrl;
     ttsAudio.load();
     ttsAudio.currentTime = 0;
-    ttsAudio.play().catch(() => onDone(true));
-    fetch(directUrl).then(r => r.blob()).then(blob => {
-      if (!ttsBlobs[text]) ttsBlobs[text] = URL.createObjectURL(blob);
-    }).catch(() => {});
+    ttsAudio.play().catch(e => { console.warn("[TTS] direct play fail:", e.message); onDone(true); });
+    fetch(directUrl).then(r => {
+      if (!r.ok) { console.warn("[TTS] fetch status:", r.status); return; }
+      return r.blob();
+    }).then(blob => {
+      if (blob && !ttsBlobs[text]) ttsBlobs[text] = URL.createObjectURL(blob);
+    }).catch(e => { console.warn("[TTS] fetch fail:", e.message); });
   }
 }
 
 // SpeechSynthesis (포그라운드 폴백 전용)
 function speakLocal(text, cb) {
-  if (!window.speechSynthesis) { if(cb) cb(); return; }
+  if (!window.speechSynthesis) { console.warn("[TTS] SpeechSynthesis 미지원"); if(cb) cb(); return; }
+  console.log("[TTS] SpeechSynthesis 폴백 사용:", text);
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "ja-JP"; u.rate = state.speed;
   const voices = window.speechSynthesis.getVoices();
   const jpVoice = voices.find(v => v.lang.startsWith("ja"));
   if (jpVoice) u.voice = jpVoice;
+  else console.warn("[TTS] 일본어 음성 없음. voices:", voices.length);
   let done = false;
   const finish = () => { if (done) return; done = true; if (cb) cb(); };
   u.onend = finish;
-  u.onerror = finish;
+  u.onerror = (e) => { console.warn("[TTS] SpeechSynthesis error:", e); finish(); };
   window.speechSynthesis.speak(u);
   setTimeout(() => { if (!done && !window.speechSynthesis.speaking) finish(); }, 3000);
 }
