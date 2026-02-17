@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.18:58:09";
+const APP_VERSION = "v26.02.17.21:36:57";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -415,7 +415,11 @@ const DAYS = Object.keys(WORD_DATA).map(Number).sort((a,b)=>a-b);
 const CATEGORIES = [
   { id: "basic", title: "기초단어", subtitle: "인사, 숫자, 명사, 동사, 형용사, 음식, 교통", days: DAYS.filter(d => d >= 1 && d <= 99) },
   { id: "intermediate", title: "중급단어", subtitle: "감정·상태, 직장·비즈니스", days: DAYS.filter(d => d >= 100 && d <= 199) },
-  { id: "mikmat", title: "미친맛집 시즌1", subtitle: "단어 · 문장 분석", days: DAYS.filter(d => d >= 200 && d <= 299), hasChildren: true },
+  { id: "mikmat", title: "미친맛집", subtitle: "시즌별 미친맛집 표현",
+    children: [
+      { id: "mikmat-s1", title: "시즌 1", subtitle: "ep01~ep13", days: DAYS.filter(d => d >= 200 && d <= 299), hasChildren: true },
+    ]
+  },
 ];
 
 // 기존 jp-bm(못 외운 단어) 데이터 정리 → 새 시스템은 jp-learned(외운 단어)
@@ -467,6 +471,7 @@ let state = {
   fsExample: Number(localStorage.getItem("jp-fs-example")) || 14,
   fsExampleM: Number(localStorage.getItem("jp-fs-example-m")) || 12,
   catIdx: 0, // 현재 선택된 카테고리
+  childIdx: -1, // 현재 선택된 시즌 (children 내 인덱스, -1이면 미선택)
   mode: "categories", // categories | menu | study | test | result
   testWords: [], testIdx: 0, testRevealed: false,
   testScore: { correct: 0, wrong: 0 },
@@ -1088,6 +1093,21 @@ document.addEventListener("keydown", e => {
   if (e.key === " ") { e.preventDefault(); togglePlay(); }
 });
 
+// === 헬퍼 ===
+function getActiveCat() {
+  const cat = CATEGORIES[state.catIdx];
+  if (cat.children && state.childIdx >= 0) return cat.children[state.childIdx];
+  return cat;
+}
+function getCatDays(cat) {
+  return cat.children ? cat.children.flatMap(c => c.days) : (cat.days || []);
+}
+function getSeasonGrammarKeys(cat) {
+  if (!cat.days || !cat.days.length) return [];
+  const offset = cat.days[0] - 1;
+  return cat.days.map(d => d - offset).filter(k => GRAMMAR_DATA[k]);
+}
+
 // === 새로고침 ===
 function doRefresh() { location.reload(); }
 
@@ -1133,17 +1153,19 @@ function render() {
       <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${quizTotal}</div>
     </div>`;
     CATEGORIES.forEach((cat, ci) => {
-      const totalW = cat.days.reduce((s,d) => s + dayWords(d).length, 0);
-      const learnedW = cat.days.reduce((s,d) => {
+      const days = getCatDays(cat);
+      const totalW = days.reduce((s,d) => s + dayWords(d).length, 0);
+      const learnedW = days.reduce((s,d) => {
         return s + dayWords(d).filter(w => state.bookmarks[d+"-"+w.h]).length;
       }, 0);
       const pct = totalW > 0 ? Math.round(learnedW/totalW*100) : 0;
       const badgeClass = pct === 100 ? "cat-badge clean" : "cat-badge";
       const badgeText = pct === 100 ? "완료" : pct + "%";
+      const dayCount = cat.children ? cat.children.length + '시즌' : days.length + '일';
       html += `<div class="cat-item" onclick="openCategory(${ci})">
         <div>
           <div class="cat-title">${cat.title}</div>
-          <div class="cat-sub">${cat.subtitle} · ${cat.days.length}일 · ${totalW}단어</div>
+          <div class="cat-sub">${cat.subtitle} · ${dayCount} · ${totalW}단어</div>
         </div>
         <div class="${badgeClass}">${badgeText}</div>
       </div>`;
@@ -1267,24 +1289,64 @@ function render() {
     return;
   }
 
-  // 시즌 하위 메뉴 (단어 / 문장 분석)
-  if (state.mode === "catSubMenu") {
+  // 시즌 선택 메뉴 (부모 카테고리 → 시즌 목록)
+  if (state.mode === "seasonMenu") {
     const cat = CATEGORIES[state.catIdx];
-    const totalW = cat.days.reduce((s,d) => s + dayWords(d).length, 0);
-    const learnedW = cat.days.reduce((s,d) => s + dayWords(d).filter(w => state.bookmarks[d+"-"+w.h]).length, 0);
-    const wordPct = totalW > 0 ? Math.round(learnedW/totalW*100) : 0;
-    const totalS = GRAMMAR_KEYS.reduce((s,k) => s + (GRAMMAR_DATA[k]?.sentences.length||0), 0);
-    const learnedS = GRAMMAR_KEYS.reduce((s,k) => {
-      const data = GRAMMAR_DATA[k];
-      if (!data) return s;
-      return s + data.sentences.filter((_, i) => isGrammarLearned(k, i)).length;
-    }, 0);
-    const grammarPct = totalS > 0 ? Math.round(learnedS/totalS*100) : 0;
+    const allDays = getCatDays(cat);
+    const totalW = allDays.reduce((s,d) => s + dayWords(d).length, 0);
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
           <div class="menu-header-title">${cat.title}</div>
+        </div>
+        <div class="menu-header-sub" style="margin-left:28px">시즌을 선택하세요 · ${totalW}단어</div>
+      </div>
+      <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
+    </div>`;
+    html += `<div class="menu-list">`;
+    cat.children.forEach((child, ci) => {
+      const cTotalW = child.days.reduce((s,d) => s + dayWords(d).length, 0);
+      const cLearnedW = child.days.reduce((s,d) => s + dayWords(d).filter(w => state.bookmarks[d+"-"+w.h]).length, 0);
+      const pct = cTotalW > 0 ? Math.round(cLearnedW/cTotalW*100) : 0;
+      const badgeClass = pct === 100 ? "cat-badge clean" : "cat-badge";
+      const badgeText = pct === 100 ? "완료" : pct + "%";
+      html += `<div class="cat-item" onclick="openSeason(${ci})">
+        <div>
+          <div class="cat-title">${child.title}</div>
+          <div class="cat-sub">${child.subtitle} · ${cTotalW}단어</div>
+        </div>
+        <div class="${badgeClass}">${badgeText}</div>
+      </div>`;
+    });
+    html += `</div>`;
+    app.innerHTML = html;
+    document.getElementById("settings-root").innerHTML = "";
+    return;
+  }
+
+  // 시즌 하위 메뉴 (단어 / 문장 분석)
+  if (state.mode === "catSubMenu") {
+    const cat = getActiveCat();
+    const parentCat = CATEGORIES[state.catIdx];
+    const backFn = parentCat.children ? "goSeasonMenu()" : "goCategories()";
+    const totalW = cat.days.reduce((s,d) => s + dayWords(d).length, 0);
+    const learnedW = cat.days.reduce((s,d) => s + dayWords(d).filter(w => state.bookmarks[d+"-"+w.h]).length, 0);
+    const wordPct = totalW > 0 ? Math.round(learnedW/totalW*100) : 0;
+    const gKeys = getSeasonGrammarKeys(cat);
+    const totalS = gKeys.reduce((s,k) => s + (GRAMMAR_DATA[k]?.sentences.length||0), 0);
+    const learnedS = gKeys.reduce((s,k) => {
+      const data = GRAMMAR_DATA[k];
+      if (!data) return s;
+      return s + data.sentences.filter((_, i) => isGrammarLearned(k, i)).length;
+    }, 0);
+    const grammarPct = totalS > 0 ? Math.round(learnedS/totalS*100) : 0;
+    const headerTitle = parentCat.children ? `${parentCat.title} ${cat.title}` : cat.title;
+    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
+          <div class="menu-header-title">${headerTitle}</div>
         </div>
         <div class="menu-header-sub" style="margin-left:28px">학습 유형을 선택하세요</div>
       </div>
@@ -1294,12 +1356,12 @@ function render() {
     html += `<div class="cat-item" onclick="openCatWords()">
       <div>
         <div class="cat-title">📝 단어</div>
-        <div class="cat-sub">에피소드별 단어 학습 · ${cat.days.length}일 · ${totalW}단어</div>
+        <div class="cat-sub">에피소드별 단어 학습 · ${cat.days.length}화 · ${totalW}단어</div>
       </div>
       <div class="${wordPct === 100 ? 'cat-badge clean' : 'cat-badge'}">${wordPct === 100 ? '완료' : wordPct + '%'}</div>
     </div>`;
     // 문장 분석
-    if (GRAMMAR_KEYS.length > 0) {
+    if (gKeys.length > 0) {
       html += `<div class="cat-item" onclick="openGrammarMenu()" style="border-color:rgba(233,69,96,.25)">
         <div>
           <div class="cat-title" style="color:var(--accent)">📖 문장 분석</div>
@@ -1316,6 +1378,8 @@ function render() {
 
   // 문장 분석 메뉴
   if (state.mode === "grammarMenu") {
+    const _gCat = getActiveCat();
+    const _gKeys = _gCat.days ? getSeasonGrammarKeys(_gCat) : GRAMMAR_KEYS;
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -1326,7 +1390,7 @@ function render() {
       </div>
     </div>`;
     html += `<div class="menu-list">`;
-    for (const k of GRAMMAR_KEYS) {
+    for (const k of _gKeys) {
       const data = GRAMMAR_DATA[k];
       if (!data) continue;
       const glCnt = data.sentences.filter((_, i) => isGrammarLearned(k, i)).length;
@@ -1429,14 +1493,18 @@ function render() {
 
   // 메뉴 모드 (DAY 목록)
   if (state.mode === "menu") {
-    const cat = CATEGORIES[state.catIdx];
+    const cat = getActiveCat();
     const catDays = cat.days;
     const menuBackFn = cat.hasChildren ? "goMenuBack()" : "goCategories()";
+    const parentCat = CATEGORIES[state.catIdx];
+    const menuTitle = parentCat.children
+      ? `${parentCat.title} ${cat.title} 단어`
+      : (cat.hasChildren ? `${cat.title} 단어` : cat.title);
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="${menuBackFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${cat.title} ${cat.hasChildren ? '단어' : ''}</div>
+          <div class="menu-header-title">${menuTitle}</div>
         </div>
         <div class="menu-header-sub" style="margin-left:28px">DAY를 선택하세요 · ${catDays.reduce((s,d)=>s+dayWords(d).length,0)}단어</div>
       </div>
@@ -1825,8 +1893,12 @@ function selectDay(d) { stopAuto(); state.day = d; generateShuffleSequence(); st
 function openDay(d) { state.day = d; generateShuffleSequence(); state.idx = state.shuffle ? (state.shuffleSequence[0] ?? 0) : 0; state.mode = "study"; pushMode("study"); render(); }
 function openCategory(ci) {
   state.catIdx = ci;
+  state.childIdx = -1;
   const cat = CATEGORIES[ci];
-  if (cat.hasChildren) {
+  if (cat.children) {
+    state.mode = "seasonMenu";
+    pushMode("seasonMenu");
+  } else if (cat.hasChildren) {
     state.mode = "catSubMenu";
     pushMode("catSubMenu");
   } else {
@@ -1835,13 +1907,29 @@ function openCategory(ci) {
   }
   render();
 }
-function goCategories() { stopAuto(); state.mode = "categories"; skipPopstate = true; history.back(); render(); }
+function openSeason(childIdx) {
+  state.childIdx = childIdx;
+  const child = getActiveCat();
+  if (child.hasChildren) {
+    state.mode = "catSubMenu";
+    pushMode("catSubMenu");
+  } else {
+    state.mode = "menu";
+    pushMode("menu");
+  }
+  render();
+}
+function goCategories() { stopAuto(); state.childIdx = -1; state.mode = "categories"; skipPopstate = true; history.back(); render(); }
+function goSeasonMenu() { stopAuto(); state.childIdx = -1; state.mode = "seasonMenu"; skipPopstate = true; history.back(); render(); }
 function goMenu() { stopAuto(); state.mode = "menu"; skipPopstate = true; history.back(); render(); }
 function goMenuBack() {
   stopAuto();
-  const cat = CATEGORIES[state.catIdx];
+  const cat = getActiveCat();
   if (cat && cat.hasChildren) {
     state.mode = "catSubMenu";
+  } else if (CATEGORIES[state.catIdx].children) {
+    state.mode = "seasonMenu";
+    state.childIdx = -1;
   } else {
     state.mode = "categories";
   }
@@ -1946,7 +2034,7 @@ function toggleShowRelated() {
   render();
 }
 function resetCatLearned() {
-  const cat = CATEGORIES[state.catIdx];
+  const cat = getActiveCat();
   let count = 0;
   cat.days.forEach(d => {
     (WORD_DATA[d]?.words || []).forEach(w => { if (state.bookmarks[d+"-"+w.h]) count++; });
@@ -1959,7 +2047,7 @@ function resetCatLearned() {
   saveBookmarks(); render();
 }
 function resetCatDifficult() {
-  const cat = CATEGORIES[state.catIdx];
+  const cat = getActiveCat();
   let count = 0;
   cat.days.forEach(d => {
     (WORD_DATA[d]?.words || []).forEach(w => { if (state.difficult[d+"-"+w.h]) count++; });
@@ -2116,7 +2204,7 @@ function openCatWords() {
   render();
 }
 function goBackFromGrammar() {
-  const cat = CATEGORIES[state.catIdx];
+  const cat = getActiveCat();
   if (cat && cat.hasChildren) {
     state.mode = "catSubMenu";
   } else {
