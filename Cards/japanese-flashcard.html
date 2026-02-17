@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.21:45:02";
+const APP_VERSION = "v26.02.17.21:46:12";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1117,7 +1117,6 @@ function renderHeader(title, backFn) {
       <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
       <span class="menu-header-title" style="font-size:20px">${title}</span>
     </div>
-    <button class="refresh-btn" onclick="doRefresh()">↻</button>
   </div>`;
 }
 
@@ -1133,7 +1132,7 @@ function render() {
   if (state.mode === "categories") {
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
-        <div class="menu-header-title">日本語 단어장 <span style="font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0">${APP_VERSION}</span></div>
+        <div class="menu-header-title">日本語 단어장 <span style="font-size:10px;color:#ffd700;font-weight:700;letter-spacing:0">${APP_VERSION}</span></div>
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
@@ -1299,7 +1298,6 @@ function render() {
           <div class="menu-header-title">${cat.title}</div>
         </div>
       </div>
-      <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
     html += `<div class="menu-list">`;
     cat.children.forEach((child, ci) => {
@@ -1506,7 +1504,6 @@ function render() {
           <div class="menu-header-title">${menuTitle}</div>
         </div>
       </div>
-      <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
     html += `<div class="menu-list">`;
     for (const d of catDays) {
