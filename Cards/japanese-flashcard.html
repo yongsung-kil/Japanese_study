@@ -899,15 +899,9 @@ function onTE(e) {
   }
 }
 function grammarTE(e) {
+  // 문장분석 카드: 스와이프만 허용, 탭 네비게이션 비활성화 (TTS 탭과 충돌 방지)
   const d = touchSX - touchEX;
-  if (Math.abs(d) > 60) { d > 0 ? grammarNext() : grammarPrev(); return; }
-  if (!touchMoved) {
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
-    const x = touchSX - rect.left;
-    if (x < rect.width * 0.35) grammarPrev();
-    else if (x > rect.width * 0.65) grammarNext();
-  }
+  if (Math.abs(d) > 60) { d > 0 ? grammarNext() : grammarPrev(); }
 }
 function randIdx(len) { return Math.floor(Math.random() * len); }
 function pushHistory() {
