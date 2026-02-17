@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.21:54:39";
+const APP_VERSION = "v26.02.17.21:58:33";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1406,7 +1406,7 @@ function render() {
     const s = gData?.sentences[state.grammarIdx];
     const total = gData?.sentences.length || 0;
 
-    html += renderHeader("state.mode='grammarMenu';skipPopstate=true;history.back();render()");
+    html += renderHeader("state.pageTitle='📖 문장 분석';state.mode='grammarMenu';skipPopstate=true;history.back();render()");
     html += `<div class="info">${state.grammarIdx+1} / ${total} 문장</div>`;
 
     if (s) {
@@ -1901,18 +1901,22 @@ function openSeason(childIdx) {
   }
   render();
 }
-function goCategories() { stopAuto(); state.childIdx = -1; state.mode = "categories"; skipPopstate = true; history.back(); render(); }
-function goSeasonMenu() { stopAuto(); state.childIdx = -1; state.mode = "seasonMenu"; skipPopstate = true; history.back(); render(); }
-function goMenu() { stopAuto(); state.mode = "menu"; skipPopstate = true; history.back(); render(); }
+function goCategories() { stopAuto(); state.childIdx = -1; state.pageTitle = ""; state.mode = "categories"; skipPopstate = true; history.back(); render(); }
+function goSeasonMenu() { stopAuto(); state.childIdx = -1; state.pageTitle = CATEGORIES[state.catIdx].title; state.mode = "seasonMenu"; skipPopstate = true; history.back(); render(); }
+function goMenu() { stopAuto(); state.pageTitle = "📝 단어"; state.mode = "menu"; skipPopstate = true; history.back(); render(); }
 function goMenuBack() {
   stopAuto();
   const cat = getActiveCat();
+  const parentCat = CATEGORIES[state.catIdx];
   if (cat && cat.hasChildren) {
+    state.pageTitle = cat.title;
     state.mode = "catSubMenu";
-  } else if (CATEGORIES[state.catIdx].children) {
+  } else if (parentCat.children) {
+    state.pageTitle = parentCat.title;
     state.mode = "seasonMenu";
     state.childIdx = -1;
   } else {
+    state.pageTitle = "";
     state.mode = "categories";
   }
   skipPopstate = true; history.back(); render();
@@ -2228,8 +2232,10 @@ function openCatWords() {
 function goBackFromGrammar() {
   const cat = getActiveCat();
   if (cat && cat.hasChildren) {
+    state.pageTitle = cat.title;
     state.mode = "catSubMenu";
   } else {
+    state.pageTitle = "";
     state.mode = "categories";
   }
   skipPopstate = true;
