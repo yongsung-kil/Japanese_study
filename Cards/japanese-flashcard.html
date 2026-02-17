@@ -299,6 +299,58 @@ body {
   font-size:13px; color:var(--accent-soft); font-weight:500; white-space:nowrap; text-align:center;
 }
 .cat-badge.clean { background:rgba(0,210,211,.1); color:var(--success); }
+/* Grammar card */
+.grammar-card {
+  width:100%; flex:1; min-height:0; overflow-y:auto; scrollbar-width:none;
+  padding:4px 0;
+}
+.grammar-card::-webkit-scrollbar { display:none; }
+.grammar-sentence {
+  font-size:22px; font-weight:700; color:#fff; line-height:1.5;
+  font-family:'Noto Sans JP',sans-serif; text-align:center;
+  margin-bottom:8px;
+}
+.grammar-chunk {
+  font-size:15px; line-height:1.8; text-align:center; margin-bottom:3px;
+  font-family:'Noto Sans JP','Noto Sans KR',sans-serif;
+}
+.grammar-chunk.kanji { color:var(--accent-soft); }
+.grammar-chunk.hira { color:var(--muted); }
+.grammar-chunk.ko { color:var(--success); font-size:13px; }
+.grammar-chunk .sep { color:rgba(255,255,255,.2); margin:0 2px; }
+.grammar-divider {
+  width:60%; height:1px; margin:10px auto;
+  background:linear-gradient(90deg,transparent,rgba(233,69,96,.3),transparent);
+}
+.grammar-section-title {
+  font-size:11px; color:var(--accent); font-weight:700; letter-spacing:1px;
+  margin:8px 0 6px; text-transform:uppercase;
+}
+.grammar-word-table {
+  width:100%; border-collapse:collapse; margin-bottom:4px;
+}
+.grammar-word-table td {
+  padding:3px 6px; font-size:12px; border-bottom:1px solid rgba(255,255,255,.04);
+}
+.grammar-word-table .gw-word {
+  color:#fff; font-family:'Noto Sans JP',sans-serif; font-weight:500;
+  white-space:nowrap;
+}
+.grammar-word-table .gw-read { color:var(--muted); font-size:11px; }
+.grammar-word-table .gw-mean { color:var(--text); }
+.grammar-word-table .gw-pos {
+  color:var(--accent); font-size:10px; font-weight:500;
+  white-space:nowrap;
+}
+.grammar-point {
+  background:rgba(233,69,96,.08); border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0; padding:6px 10px; margin-bottom:6px;
+}
+.grammar-point-title {
+  font-size:13px; font-weight:700; color:var(--accent-soft);
+  font-family:'Noto Sans JP','Noto Sans KR',sans-serif;
+}
+.grammar-point-desc { font-size:12px; color:var(--muted); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -309,9 +361,11 @@ body {
 <script>document.write('<script src="기초단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>document.write('<script src="중급단어.js?_t=' + Date.now() + '"><\/script>');</script>
 <script>const WORD_DATA_MIKMAT = {};</script>
+<script>const GRAMMAR_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
+<script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.22:05:00";
+const APP_VERSION = "v26.02.18.00:15:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -336,6 +390,13 @@ CATEGORY_SOURCES.forEach(src => {
   });
 });
 
+// 문장 분석 데이터 통합
+const GRAMMAR_DATA = {};
+Object.keys(GRAMMAR_DATA_MIKMAT).forEach(k => {
+  GRAMMAR_DATA[Number(k)] = GRAMMAR_DATA_MIKMAT[k];
+});
+const GRAMMAR_KEYS = Object.keys(GRAMMAR_DATA).map(Number).sort((a,b)=>a-b);
+
 const DAYS = Object.keys(WORD_DATA).map(Number).sort((a,b)=>a-b);
 
 // 카테고리 구조
@@ -353,6 +414,7 @@ let state = {
   day: 1, idx: 0, playing: false, playCount: 0,
   showMeaning: true, showExample: localStorage.getItem("jp-show-example") !== "false",
   hideLearned: localStorage.getItem("jp-hide-learned") === "true",
+  showRelated: localStorage.getItem("jp-show-related") !== "0",
   speed: 1.0, showSettings: false, slideDir: "",
   repeatDelay: Number(localStorage.getItem("jp-repeat-delay")) || 2400,
   repeatCount: Number(localStorage.getItem("jp-repeat-count")) || 3,
@@ -374,12 +436,19 @@ let state = {
   shuffleSequence: [], // 랜덤 시퀀스 (pre-generated)
   shuffleSeqIdx: 0, // 현재 랜덤 시퀀스 위치
   shuffleHistory: [], // listening 모드 랜덤 히스토리
+  grammarKey: 1, // 문장 분석 현재 에피소드
+  grammarIdx: 0, // 문장 분석 현재 문장 인덱스
 };
 
 let playId = 0;
 
+function dayWords(d) {
+  const all = WORD_DATA[d]?.words || [];
+  return state.showRelated ? all : all.filter(w => !w.rel);
+}
+
 function generateShuffleSequence() {
-  const all = WORD_DATA[state.day]?.words || [];
+  const all = getAllWords();
   const seq = Array.from({length: all.length}, (_, i) => i);
   for (let i = seq.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -391,13 +460,13 @@ function generateShuffleSequence() {
 
 function saveBookmarks() { localStorage.setItem("jp-learned", JSON.stringify(state.bookmarks)); }
 function getWords() {
-  const all = WORD_DATA[state.day]?.words || [];
+  const all = dayWords(state.day);
   if (state.hideLearned && state.mode === "study") {
     return all.filter(w => !state.bookmarks[bmKey(w)]);
   }
   return all;
 }
-function getAllWords() { return WORD_DATA[state.day]?.words || []; }
+function getAllWords() { return dayWords(state.day); }
 function getCurrent() {
   if (state.mode === "test") return state.testWords[state.testIdx];
   if (state.mode === "listening") return state.listenWords[state.listenIdx];
@@ -415,7 +484,7 @@ function isBm(w) { return w ? !!state.bookmarks[bmKey(w)] : false; }
 function bmCount() { return Object.keys(state.bookmarks).length; }
 function unlearnedCount() {
   let c = 0;
-  for (const d of DAYS) WORD_DATA[d].words.forEach(w => { if (!state.bookmarks[d+"-"+w.h]) c++; });
+  for (const d of DAYS) dayWords(d).forEach(w => { if (!state.bookmarks[d+"-"+w.h]) c++; });
   return c;
 }
 
@@ -427,7 +496,7 @@ function getDifficultCount() { return Object.keys(state.difficult).length; }
 function getDifficultWords() {
   const all = [];
   for (const d of DAYS) {
-    WORD_DATA[d].words.forEach(w => {
+    dayWords(d).forEach(w => {
       if (state.difficult[d+"-"+w.h]) all.push({ ...w, day: d });
     });
   }
@@ -444,7 +513,7 @@ function toggleDifficult() {
 function getLearnedWords() {
   const all = [];
   for (const d of DAYS) {
-    WORD_DATA[d].words.forEach(w => {
+    dayWords(d).forEach(w => {
       if (state.bookmarks[d+"-"+w.h]) all.push({ ...w, day: d });
     });
   }
@@ -763,7 +832,7 @@ function startTest() {
   // 아직 외우지 않은 단어(learned에 없는 단어)를 테스트
   const all = [];
   for (const d of DAYS) {
-    WORD_DATA[d].words.forEach(w => {
+    dayWords(d).forEach(w => {
       if (!state.bookmarks[d+"-"+w.h]) all.push({ day:d, h:w.h, r:w.r, m:w.m, cnt:1 });
     });
   }
@@ -815,6 +884,17 @@ function onTE(e) {
     const x = touchSX - rect.left;
     if (x < rect.width * 0.35) goPrev();
     else if (x > rect.width * 0.65) goNext();
+  }
+}
+function grammarTE(e) {
+  const d = touchSX - touchEX;
+  if (Math.abs(d) > 60) { d > 0 ? grammarNext() : grammarPrev(); return; }
+  if (!touchMoved) {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = touchSX - rect.left;
+    if (x < rect.width * 0.35) grammarPrev();
+    else if (x > rect.width * 0.65) grammarNext();
   }
 }
 function randIdx(len) { return Math.floor(Math.random() * len); }
@@ -889,6 +969,11 @@ function goPrev() {
 
 // === KEYBOARD ===
 document.addEventListener("keydown", e => {
+  if (state.mode === "grammar") {
+    if (e.key === "ArrowRight") grammarNext();
+    if (e.key === "ArrowLeft") grammarPrev();
+    return;
+  }
   if (e.key === "ArrowRight") goNext();
   if (e.key === "ArrowLeft") goPrev();
   if (e.key === " ") { e.preventDefault(); togglePlay(); }
@@ -915,6 +1000,17 @@ function render() {
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
     html += `<div class="menu-list">`;
+    // 문장 분석
+    if (GRAMMAR_KEYS.length > 0) {
+      const totalS = GRAMMAR_KEYS.reduce((s,k) => s + (GRAMMAR_DATA[k]?.sentences.length||0), 0);
+      html += `<div class="cat-item" onclick="openGrammarMenu()" style="border-color:rgba(233,69,96,.25)">
+        <div>
+          <div class="cat-title" style="color:var(--accent)">📖 문장 분석</div>
+          <div class="cat-sub">회차별 문장 · 단어 · 문법 분석</div>
+        </div>
+        <div class="cat-badge">${totalS}문장</div>
+      </div>`;
+    }
     // 듣기퀴즈 (외운 단어)
     const lnCount = getLearnedCount();
     html += `<div class="cat-item" onclick="startListeningLearned()" style="border-color:rgba(0,210,211,.2)">
@@ -934,9 +1030,9 @@ function render() {
       <div class="cat-badge" style="background:rgba(255,215,0,.15);color:#ffd700">${dfCount}</div>
     </div>`;
     CATEGORIES.forEach((cat, ci) => {
-      const totalW = cat.days.reduce((s,d) => s + (WORD_DATA[d]?.words.length||0), 0);
+      const totalW = cat.days.reduce((s,d) => s + dayWords(d).length, 0);
       const learnedW = cat.days.reduce((s,d) => {
-        return s + (WORD_DATA[d]?.words.filter(w => state.bookmarks[d+"-"+w.h]).length||0);
+        return s + dayWords(d).filter(w => state.bookmarks[d+"-"+w.h]).length;
       }, 0);
       const pct = totalW > 0 ? Math.round(learnedW/totalW*100) : 0;
       const badgeClass = pct === 100 ? "cat-badge clean" : "cat-badge";
@@ -955,6 +1051,113 @@ function render() {
     return;
   }
 
+  // 문장 분석 메뉴
+  if (state.mode === "grammarMenu") {
+    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
+          <div class="menu-header-title">📖 문장 분석 <span style="font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0">${APP_VERSION}</span></div>
+        </div>
+        <div class="menu-header-sub" style="margin-left:28px">에피소드를 선택하세요</div>
+      </div>
+    </div>`;
+    html += `<div class="menu-list">`;
+    for (const k of GRAMMAR_KEYS) {
+      const data = GRAMMAR_DATA[k];
+      if (!data) continue;
+      html += `<div class="menu-item" onclick="openGrammar(${k})">
+        <div class="menu-item-left">
+          <div class="menu-day" style="color:var(--accent)">EP ${String(k).padStart(2,'0')}</div>
+          <div class="menu-title">${data.title}</div>
+        </div>
+        <div class="menu-badge">${data.sentences.length}문장</div>
+      </div>`;
+    }
+    html += `</div>`;
+    app.innerHTML = html;
+    document.getElementById("settings-root").innerHTML = "";
+    return;
+  }
+
+  // 문장 분석 카드 모드
+  if (state.mode === "grammar") {
+    const gData = GRAMMAR_DATA[state.grammarKey];
+    const s = gData?.sentences[state.grammarIdx];
+    const total = gData?.sentences.length || 0;
+
+    html += `<div class="header">
+      <div>
+        <button onclick="state.mode='grammarMenu';skipPopstate=true;history.back();render()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
+        <span class="logo" style="font-size:18px">📖</span><span class="logo-sub">${gData.title}</span>
+      </div>
+      <span style="font-size:10px;color:var(--muted);font-weight:400">${APP_VERSION}</span>
+    </div>`;
+    html += `<div class="info">${state.grammarIdx+1} / ${total} 문장</div>`;
+
+    if (s) {
+      const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
+      html += `<div class="card-area${slideClass}" style="justify-content:flex-start;padding:16px 16px 12px;overflow:hidden"
+        ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="grammarTE(event)">`;
+      state.slideDir = "";
+
+      html += `<div class="grammar-card">`;
+
+      // 원문
+      html += `<div class="grammar-sentence">${s.jp}</div>`;
+
+      // 끊어읽기 (한자)
+      html += `<div class="grammar-chunk kanji">${renderGrammarChunk(s.chunk)}</div>`;
+      // 끊어읽기 (히라가나)
+      html += `<div class="grammar-chunk hira">${renderGrammarChunk(s.reading)}</div>`;
+      // 끊어읽기 (한국어)
+      html += `<div class="grammar-chunk ko">${renderGrammarChunk(s.meaning)}</div>`;
+
+      html += `<div class="grammar-divider"></div>`;
+
+      // 단어
+      html += `<div class="grammar-section-title">단어</div>`;
+      html += `<table class="grammar-word-table">`;
+      s.words.forEach(wd => {
+        const display = wd.rd ? wd.w + ' <span style="color:var(--muted);font-size:11px">(' + wd.rd + ')</span>' : wd.w;
+        html += `<tr>
+          <td class="gw-word">${display}</td>
+          <td class="gw-mean">${wd.m}</td>
+          <td class="gw-pos">${wd.p}</td>
+        </tr>`;
+      });
+      html += `</table>`;
+
+      html += `<div class="grammar-divider"></div>`;
+
+      // 문법
+      html += `<div class="grammar-section-title">문법</div>`;
+      s.grammar.forEach(g => {
+        html += `<div class="grammar-point">
+          <div class="grammar-point-title">${g.pt}</div>
+          <div class="grammar-point-desc">${g.m} — ${g.note}</div>
+        </div>`;
+      });
+
+      html += `</div>`; // grammar-card
+      html += `</div>`; // card-area
+    }
+
+    // Progress
+    const pct = ((state.grammarIdx + 1) / total * 100);
+    html += `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+
+    // Nav
+    html += `<div class="nav-row">
+      <button class="nav-btn" onclick="grammarPrev()">← 이전</button>
+      <button class="nav-btn" onclick="grammarNext()">다음 →</button>
+    </div>`;
+
+    app.innerHTML = html;
+    document.getElementById("settings-root").innerHTML = "";
+    return;
+  }
+
   // 메뉴 모드 (DAY 목록)
   if (state.mode === "menu") {
     const cat = CATEGORIES[state.catIdx];
@@ -965,7 +1168,7 @@ function render() {
           <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
           <div class="menu-header-title">${cat.title}</div>
         </div>
-        <div class="menu-header-sub" style="margin-left:28px">DAY를 선택하세요 · ${catDays.reduce((s,d)=>s+(WORD_DATA[d]?.words.length||0),0)}단어</div>
+        <div class="menu-header-sub" style="margin-left:28px">DAY를 선택하세요 · ${catDays.reduce((s,d)=>s+dayWords(d).length,0)}단어</div>
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
@@ -973,8 +1176,9 @@ function render() {
     for (const d of catDays) {
       const data = WORD_DATA[d];
       if (!data) continue;
-      const total = data.words.length;
-      const learnedCnt = data.words.filter(w => state.bookmarks[d + "-" + w.h]).length;
+      const dw = dayWords(d);
+      const total = dw.length;
+      const learnedCnt = dw.filter(w => state.bookmarks[d + "-" + w.h]).length;
       const badgeClass = learnedCnt === total ? "menu-badge clean" : "menu-badge";
       const badgeText = learnedCnt === total ? "완료" : "✓ " + learnedCnt + "/" + total;
       html += `<div class="menu-item" onclick="openDay(${d})">
@@ -1073,6 +1277,11 @@ function render() {
     const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
     html += `<div class="card-area${slideClass}" ontouchstart="onTS(event)" ontouchmove="onTM(event)" ontouchend="onTE(event)">`;
     state.slideDir = "";
+
+    // 관련단어 뱃지
+    if (w.rel) {
+      html += `<div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted);background:rgba(255,255,255,.06);padding:2px 10px;border-radius:4px;pointer-events:none">관련</div>`;
+    }
 
     // Bookmark + Difficult + AutoPlay (study) / Difficult only (listening)
     if (state.mode === "study") {
@@ -1224,6 +1433,13 @@ function render() {
           <div class="settings-value">
             <button style="background:${state.hideLearned?'var(--success)':'var(--day-inactive)'};color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
               onclick="toggleHideLearned()">${state.hideLearned?'ON':'OFF'}</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">관련단어 보기</span>
+          <div class="settings-value">
+            <button style="background:${state.showRelated?'var(--success)':'var(--day-inactive)'};color:#fff;border:none;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:13px"
+              onclick="toggleShowRelated()">${state.showRelated?'ON':'OFF'}</button>
           </div>
         </div>
         <div class="settings-row">
@@ -1432,6 +1648,21 @@ function toggleHideLearned() {
   }
   render();
 }
+function toggleShowRelated() {
+  state.showRelated = !state.showRelated;
+  localStorage.setItem("jp-show-related", state.showRelated ? "1" : "0");
+  if (state.mode === "study") {
+    if (state.shuffle) {
+      generateShuffleSequence();
+      state.shuffleSeqIdx = 0;
+      state.idx = state.shuffleSequence[0] ?? 0;
+    } else {
+      const visible = getWords();
+      if (state.idx >= visible.length) state.idx = Math.max(0, visible.length - 1);
+    }
+  }
+  render();
+}
 function resetCatLearned() {
   const cat = CATEGORIES[state.catIdx];
   let count = 0;
@@ -1513,6 +1744,40 @@ function cycleSpeed() {
   const i = speeds.indexOf(state.speed);
   state.speed = speeds[(i + 1) % speeds.length];
   render();
+}
+
+// === GRAMMAR ===
+function openGrammarMenu() {
+  state.mode = "grammarMenu";
+  pushMode("grammarMenu");
+  render();
+}
+function openGrammar(key) {
+  state.grammarKey = key;
+  state.grammarIdx = 0;
+  state.mode = "grammar";
+  pushMode("grammar");
+  render();
+}
+function grammarNext() {
+  const data = GRAMMAR_DATA[state.grammarKey];
+  if (data && state.grammarIdx < data.sentences.length - 1) {
+    state.grammarIdx++;
+    state.slideDir = "left";
+    render();
+  }
+}
+function grammarPrev() {
+  if (state.grammarIdx > 0) {
+    state.grammarIdx--;
+    state.slideDir = "right";
+    render();
+  }
+}
+function renderGrammarChunk(text, cls) {
+  return text.split(' / ').map((part, i, arr) =>
+    `<span>${part}</span>${i < arr.length - 1 ? '<span class="sep"> / </span>' : ''}`
+  ).join('');
 }
 
 // Init
