@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.22:04:49";
+const APP_VERSION = "v26.02.17.22:06:42";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1182,14 +1182,7 @@ function render() {
     const dfCount = getDifficultCount();
     const glCount = getGrammarLearnedCount();
     const gdCount = getGrammarDifficultCount();
-    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${state.pageTitle}</div>
-        </div>
-      </div>
-    </div>`;
+    html += renderHeader('goCategories()');
     html += `<div class="menu-list">`;
     // 단어 섹션
     html += `<div class="cat-item" onclick="startListeningLearned()" style="border-color:rgba(0,210,211,.2)">
@@ -1288,14 +1281,7 @@ function render() {
     const cat = CATEGORIES[state.catIdx];
     const allDays = getCatDays(cat);
     const totalW = allDays.reduce((s,d) => s + dayWords(d).length, 0);
-    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${state.pageTitle}</div>
-        </div>
-      </div>
-    </div>`;
+    html += renderHeader('goCategories()');
     html += `<div class="menu-list">`;
     cat.children.forEach((child, ci) => {
       const cTotalW = child.days.reduce((s,d) => s + dayWords(d).length, 0);
@@ -1332,14 +1318,7 @@ function render() {
       return s + data.sentences.filter((_, i) => isGrammarLearned(k, i)).length;
     }, 0);
     const grammarPct = totalS > 0 ? Math.round(learnedS/totalS*100) : 0;
-    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${state.pageTitle}</div>
-        </div>
-      </div>
-    </div>`;
+    html += renderHeader(backFn);
     html += `<div class="menu-list">`;
     // 단어
     html += `<div class="cat-item" onclick="openCatWords()">
@@ -1367,14 +1346,7 @@ function render() {
   if (state.mode === "grammarMenu") {
     const _gCat = getActiveCat();
     const _gKeys = _gCat.days ? getSeasonGrammarKeys(_gCat) : GRAMMAR_KEYS;
-    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="goBackFromGrammar()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${state.pageTitle}</div>
-        </div>
-      </div>
-    </div>`;
+    html += renderHeader('goBackFromGrammar()');
     html += `<div class="menu-list">`;
     for (const k of _gKeys) {
       const data = GRAMMAR_DATA[k];
@@ -1485,14 +1457,7 @@ function render() {
     const cat = getActiveCat();
     const catDays = cat.days;
     const menuBackFn = cat.hasChildren ? "goMenuBack()" : "goCategories()";
-    html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="${menuBackFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${state.pageTitle}</div>
-        </div>
-      </div>
-    </div>`;
+    html += renderHeader(menuBackFn);
     html += `<div class="menu-list">`;
     for (const d of catDays) {
       const data = WORD_DATA[d];
