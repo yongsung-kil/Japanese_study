@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.21:46:12";
+const APP_VERSION = "v26.02.17.21:51:16";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -472,6 +472,7 @@ let state = {
   fsExampleM: Number(localStorage.getItem("jp-fs-example-m")) || 12,
   catIdx: 0, // 현재 선택된 카테고리
   childIdx: -1, // 현재 선택된 시즌 (children 내 인덱스, -1이면 미선택)
+  pageTitle: "", // 현재 페이지 헤더 타이틀 (클릭한 항목명)
   mode: "categories", // categories | menu | study | test | result
   testWords: [], testIdx: 0, testRevealed: false,
   testScore: { correct: 0, wrong: 0 },
@@ -624,6 +625,7 @@ function startListeningLearned() {
   }
   state.listenWords = all; state.listenIdx = 0;
   state.listenType = "learned";
+  state.pageTitle = "✓ 외운 단어";
   state.mode = "listening"; state.showMeaning = false;
   pushMode("listening");
   stopAuto(); render();
@@ -638,6 +640,7 @@ function startListening() {
   }
   state.listenWords = all; state.listenIdx = 0;
   state.listenType = "difficult";
+  state.pageTitle = "★ 어려운 단어";
   state.mode = "listening"; state.showMeaning = false;
   pushMode("listening");
   stopAuto(); render();
@@ -1111,11 +1114,11 @@ function getSeasonGrammarKeys(cat) {
 // === 새로고침 ===
 function doRefresh() { location.reload(); }
 
-function renderHeader(title, backFn) {
+function renderHeader(backFn) {
   return `<div class="header" style="padding:12px 16px 4px">
     <div style="display:flex;align-items:center">
       <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-      <span class="menu-header-title" style="font-size:20px">${title}</span>
+      <span class="menu-header-title" style="font-size:20px">${state.pageTitle}</span>
     </div>
   </div>`;
 }
@@ -1184,7 +1187,7 @@ function render() {
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">🎧 퀴즈</div>
+          <div class="menu-header-title">${state.pageTitle}</div>
         </div>
       </div>
     </div>`;
@@ -1236,7 +1239,7 @@ function render() {
     const typeLabel = state.grammarListenType === 'learned' ? '외운 문장' : '어려운 문장';
     const typeColor = state.grammarListenType === 'learned' ? 'var(--success)' : '#ffd700';
 
-    html += renderHeader(`${typeLabel} 퀴즈`, 'goCategories()');
+    html += renderHeader('goCategories()');
     html += `<div class="info">${idx+1}/${total}</div>`;
 
     if (s) {
@@ -1295,7 +1298,7 @@ function render() {
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${cat.title}</div>
+          <div class="menu-header-title">${state.pageTitle}</div>
         </div>
       </div>
     </div>`;
@@ -1336,12 +1339,11 @@ function render() {
       return s + data.sentences.filter((_, i) => isGrammarLearned(k, i)).length;
     }, 0);
     const grammarPct = totalS > 0 ? Math.round(learnedS/totalS*100) : 0;
-    const headerTitle = parentCat.children ? `${parentCat.title} ${cat.title}` : cat.title;
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${headerTitle}</div>
+          <div class="menu-header-title">${state.pageTitle}</div>
         </div>
       </div>
     </div>`;
@@ -1378,7 +1380,7 @@ function render() {
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="goBackFromGrammar()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">📖 문장 분석</div>
+          <div class="menu-header-title">${state.pageTitle}</div>
         </div>
       </div>
     </div>`;
@@ -1413,7 +1415,7 @@ function render() {
     const s = gData?.sentences[state.grammarIdx];
     const total = gData?.sentences.length || 0;
 
-    html += renderHeader(gData.title, "state.mode='grammarMenu';skipPopstate=true;history.back();render()");
+    html += renderHeader("state.mode='grammarMenu';skipPopstate=true;history.back();render()");
     html += `<div class="info">${state.grammarIdx+1} / ${total} 문장</div>`;
 
     if (s) {
@@ -1493,15 +1495,11 @@ function render() {
     const cat = getActiveCat();
     const catDays = cat.days;
     const menuBackFn = cat.hasChildren ? "goMenuBack()" : "goCategories()";
-    const parentCat = CATEGORIES[state.catIdx];
-    const menuTitle = parentCat.children
-      ? `${parentCat.title} ${cat.title} 단어`
-      : (cat.hasChildren ? `${cat.title} 단어` : cat.title);
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="${menuBackFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">${menuTitle}</div>
+          <div class="menu-header-title">${state.pageTitle}</div>
         </div>
       </div>
     </div>`;
@@ -1536,12 +1534,10 @@ function render() {
 
   // Header
   if (state.mode === "listening") {
-    const _listenTitle = state.listenType==='learned'?'외운 단어 퀴즈':'어려운 단어 퀴즈';
-    html += renderHeader(_listenTitle, 'goCategories()');
+    html += renderHeader('goCategories()');
     html += `<div class="info">${state.listenIdx+1}/${state.listenWords.length}</div>`;
   } else {
-    const _studyTitle = WORD_DATA[state.day]?.title || '단어장';
-    html += renderHeader(_studyTitle, 'goMenu()');
+    html += renderHeader('goMenu()');
   }
 
   if (state.mode === "study") {
@@ -1885,11 +1881,12 @@ history.replaceState({ mode: "categories" }, "");
 
 // === ACTIONS ===
 function selectDay(d) { stopAuto(); state.day = d; generateShuffleSequence(); state.idx = state.shuffle ? (state.shuffleSequence[0] ?? 0) : 0; state.mode = "study"; pushMode("study"); render(); }
-function openDay(d) { state.day = d; generateShuffleSequence(); state.idx = state.shuffle ? (state.shuffleSequence[0] ?? 0) : 0; state.mode = "study"; pushMode("study"); render(); }
+function openDay(d) { state.day = d; state.pageTitle = WORD_DATA[d]?.title || ''; generateShuffleSequence(); state.idx = state.shuffle ? (state.shuffleSequence[0] ?? 0) : 0; state.mode = "study"; pushMode("study"); render(); }
 function openCategory(ci) {
   state.catIdx = ci;
   state.childIdx = -1;
   const cat = CATEGORIES[ci];
+  state.pageTitle = cat.title;
   if (cat.children) {
     state.mode = "seasonMenu";
     pushMode("seasonMenu");
@@ -1905,6 +1902,7 @@ function openCategory(ci) {
 function openSeason(childIdx) {
   state.childIdx = childIdx;
   const child = getActiveCat();
+  state.pageTitle = child.title;
   if (child.hasChildren) {
     state.mode = "catSubMenu";
     pushMode("catSubMenu");
@@ -2149,6 +2147,7 @@ function cycleSpeed() {
 
 // === 퀴즈 메뉴 ===
 function openQuizMenu() {
+  state.pageTitle = "🎧 퀴즈";
   state.mode = "quizMenu";
   pushMode("quizMenu");
   render();
@@ -2165,6 +2164,7 @@ function startGrammarListeningLearned() {
   state.grammarListenWords = all;
   state.grammarListenIdx = 0;
   state.grammarListenType = "learned";
+  state.pageTitle = "✓ 외운 문장";
   state.mode = "grammarListening";
   state.showMeaning = false;
   pushMode("grammarListening");
@@ -2181,6 +2181,7 @@ function startGrammarListeningDifficult() {
   state.grammarListenWords = all;
   state.grammarListenIdx = 0;
   state.grammarListenType = "difficult";
+  state.pageTitle = "★ 어려운 문장";
   state.mode = "grammarListening";
   state.showMeaning = false;
   pushMode("grammarListening");
@@ -2230,6 +2231,7 @@ function toggleGrammarListenDifficult() {
 
 // === GRAMMAR ===
 function openCatWords() {
+  state.pageTitle = "📝 단어";
   state.mode = "menu";
   pushMode("menu");
   render();
@@ -2246,6 +2248,7 @@ function goBackFromGrammar() {
   render();
 }
 function openGrammarMenu() {
+  state.pageTitle = "📖 문장 분석";
   state.mode = "grammarMenu";
   pushMode("grammarMenu");
   render();
@@ -2253,6 +2256,7 @@ function openGrammarMenu() {
 function openGrammar(key) {
   state.grammarKey = key;
   state.grammarIdx = 0;
+  state.pageTitle = GRAMMAR_DATA[key]?.title || '';
   state.mode = "grammar";
   pushMode("grammar");
   render();
