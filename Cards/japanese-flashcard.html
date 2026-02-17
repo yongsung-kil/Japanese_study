@@ -305,17 +305,29 @@ body {
   padding:4px 0;
 }
 .grammar-card::-webkit-scrollbar { display:none; }
+.grammar-sentence-row {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  margin-bottom:8px;
+}
+.grammar-speak {
+  flex:0 0 auto; background:none; border:none; color:var(--accent);
+  font-size:18px; cursor:pointer; padding:4px; transition:color .2s;
+}
+.grammar-speak:active { opacity:.5; }
 .grammar-sentence {
   font-size:22px; font-weight:700; color:#fff; line-height:1.5;
   font-family:'Noto Sans JP',sans-serif; text-align:center;
-  margin-bottom:8px;
 }
 .grammar-chunk {
   font-size:15px; line-height:1.8; text-align:center; margin-bottom:3px;
   font-family:'Noto Sans JP','Noto Sans KR',sans-serif;
 }
 .grammar-chunk.kanji { color:var(--accent-soft); }
-.grammar-chunk.hira { color:var(--muted); }
+.grammar-chunk.hira { color:var(--muted); cursor:pointer; }
+.grammar-chunk.hira .chunk-word {
+  padding:2px 4px; border-radius:4px; transition:background .15s;
+}
+.grammar-chunk.hira .chunk-word:active { background:rgba(255,255,255,.1); }
 .grammar-chunk.ko { color:var(--success); font-size:13px; }
 .grammar-chunk .sep { color:rgba(255,255,255,.2); margin:0 2px; }
 .grammar-divider {
@@ -323,8 +335,8 @@ body {
   background:linear-gradient(90deg,transparent,rgba(233,69,96,.3),transparent);
 }
 .grammar-section-title {
-  font-size:11px; color:var(--accent); font-weight:700; letter-spacing:1px;
-  margin:8px 0 6px; text-transform:uppercase;
+  font-size:14px; color:var(--accent); font-weight:700; letter-spacing:1px;
+  margin:10px 0 8px;
 }
 .grammar-word-table {
   width:100%; border-collapse:collapse; margin-bottom:4px;
@@ -365,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.18.00:15:00";
+const APP_VERSION = "v26.02.18.00:40:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1103,13 +1115,16 @@ function render() {
 
       html += `<div class="grammar-card">`;
 
-      // 원문
-      html += `<div class="grammar-sentence">${s.jp}</div>`;
+      // 원문 + 재생버튼
+      html += `<div class="grammar-sentence-row">
+        <button class="grammar-speak" onclick="event.stopPropagation();speakGrammar('${s.jp.replace(/'/g,"\\'")}')">🔊</button>
+        <div class="grammar-sentence">${s.jp}</div>
+      </div>`;
 
       // 끊어읽기 (한자)
       html += `<div class="grammar-chunk kanji">${renderGrammarChunk(s.chunk)}</div>`;
-      // 끊어읽기 (히라가나)
-      html += `<div class="grammar-chunk hira">${renderGrammarChunk(s.reading)}</div>`;
+      // 끊어읽기 (히라가나) - 각 청크 탭하면 발음
+      html += `<div class="grammar-chunk hira">${renderGrammarChunkTappable(s.reading)}</div>`;
       // 끊어읽기 (한국어)
       html += `<div class="grammar-chunk ko">${renderGrammarChunk(s.meaning)}</div>`;
 
@@ -1774,10 +1789,19 @@ function grammarPrev() {
     render();
   }
 }
-function renderGrammarChunk(text, cls) {
+function renderGrammarChunk(text) {
   return text.split(' / ').map((part, i, arr) =>
     `<span>${part}</span>${i < arr.length - 1 ? '<span class="sep"> / </span>' : ''}`
   ).join('');
+}
+function renderGrammarChunkTappable(text) {
+  return text.split(' / ').map((part, i, arr) =>
+    `<span class="chunk-word" onclick="event.stopPropagation();speakGrammar('${part.replace(/'/g,"\\'")}')">${part}</span>${i < arr.length - 1 ? '<span class="sep"> / </span>' : ''}`
+  ).join('');
+}
+function speakGrammar(text) {
+  cancelSpeak();
+  speak(text);
 }
 
 // Init
