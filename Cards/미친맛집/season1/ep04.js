@@ -1,6 +1,7 @@
 // 미친맛집 시즌1 - 4화
-WORD_DATA_MIKMAT[4] = { title: "4화 야키토리", words: [
+WORD_DATA_MIKMAT[4] = { title: "4話 焼き鳥", words: [
     // 명사
+    {h:"やきとり",k:"焼き鳥",r:"yakitori",m:"야키토리/꼬치구이"},
     {h:"おさけ",k:"お酒",r:"osake",m:"술"},
     {h:"こくりゅう",k:"黒龍",r:"kokuryu",m:"코쿠류 (일본 술 이름)"},
     {h:"かぼちゃ",r:"kabocha",m:"단호박"},

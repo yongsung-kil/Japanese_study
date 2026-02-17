@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 12화
-WORD_DATA_MIKMAT[12] = { title: "12화 칼국수", words: [
+WORD_DATA_MIKMAT[12] = { title: "12話 カルグクス", words: [
     // 명사
     {h:"カンナム",k:"江南",r:"kannamu",m:"강남 (지명)"},
     {h:"カルグクス",r:"karugukusu",m:"칼국수"},

@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.22:15:05";
+const APP_VERSION = "v26.02.17.22:24:01";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -413,11 +413,11 @@ const DAYS = Object.keys(WORD_DATA).map(Number).sort((a,b)=>a-b);
 
 // 카테고리 구조
 const CATEGORIES = [
-  { id: "basic", title: "기초단어", subtitle: "인사, 숫자, 명사, 동사, 형용사, 음식, 교통", days: DAYS.filter(d => d >= 1 && d <= 99) },
-  { id: "intermediate", title: "중급단어", subtitle: "감정·상태, 직장·비즈니스", days: DAYS.filter(d => d >= 100 && d <= 199) },
-  { id: "mikmat", title: "미친맛집", subtitle: "시즌별 미친맛집 표현",
+  { id: "basic", title: "基礎単語", subtitle: "인사, 숫자, 명사, 동사, 형용사, 음식, 교통", days: DAYS.filter(d => d >= 1 && d <= 99) },
+  { id: "intermediate", title: "中級単語", subtitle: "감정·상태, 직장·비즈니스", days: DAYS.filter(d => d >= 100 && d <= 199) },
+  { id: "mikmat", title: "미친맛집(隣の国のグルメイト)", subtitle: "시즌별 미친맛집 표현",
     children: [
-      { id: "mikmat-s1", title: "시즌 1", subtitle: "ep01~ep13", days: DAYS.filter(d => d >= 200 && d <= 299), hasChildren: true },
+      { id: "mikmat-s1", title: "Season 1", subtitle: "ep01~ep13", days: DAYS.filter(d => d >= 200 && d <= 299), hasChildren: true },
     ]
   },
 ];
@@ -1149,7 +1149,7 @@ function render() {
     const quizTotal = lnCount + dfCount + glCount + gdCount;
     html += `<div class="cat-item" onclick="openQuizMenu()" style="border-color:rgba(0,210,211,.2)">
       <div>
-        <div class="cat-title" style="color:var(--success)">🎧 퀴즈</div>
+        <div class="cat-title" style="color:var(--success)">🎧 クイズ</div>
       </div>
       <div class="cat-badge" style="background:rgba(0,210,211,.15);color:var(--success)">${quizTotal}</div>
     </div>`;
@@ -1323,7 +1323,7 @@ function render() {
     // 단어
     html += `<div class="cat-item" onclick="openCatWords()">
       <div>
-        <div class="cat-title">📝 단어</div>
+        <div class="cat-title">📝 単語</div>
       </div>
       <div class="${wordPct === 100 ? 'cat-badge clean' : 'cat-badge'}">${wordPct === 100 ? '완료' : wordPct + '%'}</div>
     </div>`;
@@ -1331,7 +1331,7 @@ function render() {
     if (gKeys.length > 0) {
       html += `<div class="cat-item" onclick="openGrammarMenu()" style="border-color:rgba(233,69,96,.25)">
         <div>
-          <div class="cat-title" style="color:var(--accent)">📖 문장 분석</div>
+          <div class="cat-title" style="color:var(--accent)">📖 文章分析</div>
         </div>
         <div class="${grammarPct === 100 ? 'cat-badge clean' : 'cat-badge'}">${grammarPct === 100 ? '완료' : grammarPct + '%'}</div>
       </div>`;
@@ -1378,7 +1378,7 @@ function render() {
     const s = gData?.sentences[state.grammarIdx];
     const total = gData?.sentences.length || 0;
 
-    html += renderHeader("state.pageTitle='📖 문장 분석';state.mode='grammarMenu';skipPopstate=true;history.back();render()", `${state.grammarIdx+1}/${total}`);
+    html += renderHeader("state.pageTitle='📖 文章分析';state.mode='grammarMenu';skipPopstate=true;history.back();render()", `${state.grammarIdx+1}/${total}`);
 
     if (s) {
       const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
@@ -1863,7 +1863,7 @@ function openSeason(childIdx) {
 }
 function goCategories() { stopAuto(); state.childIdx = -1; state.pageTitle = ""; state.mode = "categories"; skipPopstate = true; history.back(); render(); }
 function goSeasonMenu() { stopAuto(); state.childIdx = -1; state.pageTitle = CATEGORIES[state.catIdx].title; state.mode = "seasonMenu"; skipPopstate = true; history.back(); render(); }
-function goMenu() { stopAuto(); state.pageTitle = "📝 단어"; state.mode = "menu"; skipPopstate = true; history.back(); render(); }
+function goMenu() { stopAuto(); state.pageTitle = "📝 単語"; state.mode = "menu"; skipPopstate = true; history.back(); render(); }
 function goMenuBack() {
   stopAuto();
   const cat = getActiveCat();
@@ -2100,7 +2100,7 @@ function cycleSpeed() {
 
 // === 퀴즈 메뉴 ===
 function openQuizMenu() {
-  state.pageTitle = "🎧 퀴즈";
+  state.pageTitle = "🎧 クイズ";
   state.mode = "quizMenu";
   pushMode("quizMenu");
   render();
@@ -2184,7 +2184,7 @@ function toggleGrammarListenDifficult() {
 
 // === GRAMMAR ===
 function openCatWords() {
-  state.pageTitle = "📝 단어";
+  state.pageTitle = "📝 単語";
   state.mode = "menu";
   pushMode("menu");
   render();
@@ -2203,7 +2203,7 @@ function goBackFromGrammar() {
   render();
 }
 function openGrammarMenu() {
-  state.pageTitle = "📖 문장 분석";
+  state.pageTitle = "📖 文章分析";
   state.mode = "grammarMenu";
   pushMode("grammarMenu");
   render();

@@ -1,6 +1,7 @@
 // 미친맛집 시즌1 - 5화
-WORD_DATA_MIKMAT[5] = { title: "5화 푸딩", words: [
+WORD_DATA_MIKMAT[5] = { title: "5話 プリン", words: [
     // 명사
+    {h:"プリン",r:"purin",m:"푸딩/프린"},
     {h:"デート",r:"deeto",m:"데이트"},
     {h:"せいそう",k:"正装",r:"seisou",m:"정장/격식 차림"},
     {h:"ふじさん",k:"富士山",r:"fujisan",m:"후지산"},

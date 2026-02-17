@@ -1,6 +1,7 @@
 // 미친맛집 시즌1 - 2화
-WORD_DATA_MIKMAT[2] = { title: "2화 치즈케이크", words: [
+WORD_DATA_MIKMAT[2] = { title: "2話 チーズケーキ", words: [
     // 명사
+    {h:"チーズケーキ",r:"chiizukeeki",m:"치즈케이크"},
     {h:"かまくら",k:"鎌倉",r:"kamakura",m:"가마쿠라 (지명)"},
     {h:"えき",k:"駅",r:"eki",m:"역"},
     {h:"けしき",k:"景色",r:"keshiki",m:"경치/풍경"},

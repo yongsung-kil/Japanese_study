@@ -1,6 +1,7 @@
 // 미친맛집 시즌1 - 10화
-WORD_DATA_MIKMAT[10] = { title: "10화 해산물", words: [
+WORD_DATA_MIKMAT[10] = { title: "10話 海鮮", words: [
     // 명사
+    {h:"かいせん",k:"海鮮",r:"kaisen",m:"해산물/해鮮"},
     {h:"ふくおか",k:"福岡",r:"fukuoka",m:"후쿠오카 (지명)"},
     {h:"しものせき",k:"下関",r:"shimonoseki",m:"시모노세키 (지명)"},
     {h:"からといちば",k:"唐戸市場",r:"karato ichiba",m:"가라토 시장"},

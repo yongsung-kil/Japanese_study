@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 8화
-WORD_DATA_MIKMAT[8] = { title: "8화 냉면", words: [
+WORD_DATA_MIKMAT[8] = { title: "8話 冷麺", words: [
     // 명사
     {h:"れいめん",k:"冷麺",r:"reimen",m:"냉면"},
     {h:"へいじょう",k:"平壌",r:"heijou",m:"평양"},

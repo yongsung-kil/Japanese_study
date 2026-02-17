@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 3화
-WORD_DATA_MIKMAT[3] = { title: "3화 야키니쿠", words: [
+WORD_DATA_MIKMAT[3] = { title: "3話 焼肉", words: [
     // 명사
     {h:"やきにく",k:"焼肉",r:"yakiniku",m:"야키니쿠/구운 고기"},
     {h:"しもふり",k:"霜降り",r:"shimofuri",m:"마블링/서리내림 (고기)"},

@@ -1,6 +1,7 @@
 // 미친맛집 시즌1 - 6화
-WORD_DATA_MIKMAT[6] = { title: "6화 중식당", words: [
+WORD_DATA_MIKMAT[6] = { title: "6話 中華料理店", words: [
     // 명사
+    {h:"ちゅうかりょうりてん",k:"中華料理店",r:"chuuka ryouriten",m:"중식당/중화요리점"},
     {h:"せき",k:"席",r:"seki",m:"좌석/석"},
     {h:"まち",k:"町",r:"machi",m:"거리/동네"},
     {h:"しもきたざわ",k:"下北沢",r:"shimokitazawa",m:"시모키타자와 (지명)"},
