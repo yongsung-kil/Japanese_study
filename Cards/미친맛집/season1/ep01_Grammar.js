@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 1화 문장 분석
-GRAMMAR_DATA_MIKMAT[1] = { title: "1화 문장 분석 (마츠시게의 13년 단골)", sentences: [
+GRAMMAR_DATA_MIKMAT[1] = { title: "1화 단골", sentences: [
   {
     jp: "こうして２人のグルメは友達になった",
     chunk: "こうして / ２人の / グルメは / 友達に / なった",
