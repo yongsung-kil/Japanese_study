@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.21:59:32";
+const APP_VERSION = "v26.02.17.22:02:55";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1114,11 +1114,12 @@ function getSeasonGrammarKeys(cat) {
 // === 새로고침 ===
 function doRefresh() { location.reload(); }
 
-function renderHeader(backFn) {
+function renderHeader(backFn, info) {
+  const infoHtml = info ? ` <span style="font-weight:400;font-size:14px;color:var(--muted)">[${info}]</span>` : '';
   return `<div class="header" style="padding:12px 16px 4px">
     <div style="display:flex;align-items:center">
       <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-      <span class="menu-header-title" style="font-size:20px">${state.pageTitle}</span>
+      <span class="menu-header-title" style="font-size:20px">${state.pageTitle}${infoHtml}</span>
     </div>
   </div>`;
 }
@@ -1233,8 +1234,7 @@ function render() {
     const typeLabel = state.grammarListenType === 'learned' ? '외운 문장' : '어려운 문장';
     const typeColor = state.grammarListenType === 'learned' ? 'var(--success)' : '#ffd700';
 
-    html += renderHeader('goCategories()');
-    html += `<div class="info">${idx+1}/${total}</div>`;
+    html += renderHeader('goCategories()', `${idx+1}/${total}`);
 
     if (s) {
       const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
@@ -1406,8 +1406,7 @@ function render() {
     const s = gData?.sentences[state.grammarIdx];
     const total = gData?.sentences.length || 0;
 
-    html += renderHeader("state.pageTitle='📖 문장 분석';state.mode='grammarMenu';skipPopstate=true;history.back();render()");
-    html += `<div class="info">${state.grammarIdx+1} / ${total} 문장</div>`;
+    html += renderHeader("state.pageTitle='📖 문장 분석';state.mode='grammarMenu';skipPopstate=true;history.back();render()", `${state.grammarIdx+1}/${total}`);
 
     if (s) {
       const slideClass = state.slideDir ? " slide-" + state.slideDir : "";
@@ -1523,24 +1522,20 @@ function render() {
 
   // Header
   if (state.mode === "listening") {
-    html += renderHeader('goCategories()');
-    html += `<div class="info">${state.listenIdx+1}/${state.listenWords.length}</div>`;
-  } else {
-    html += renderHeader('goMenu()');
-  }
-
-  if (state.mode === "study") {
-    // Info
+    html += renderHeader('goCategories()', `${state.listenIdx+1}/${state.listenWords.length}`);
+  } else if (state.mode === "study") {
     const totalWordsCount = getAllWords().length;
     let infoCount;
     if (state.shuffle) {
       infoCount = `${state.shuffleSeqIdx+1}/${state.shuffleSequence.length} 🔀`;
     } else if (state.hideLearned && words.length < totalWordsCount) {
-      infoCount = `${words.length > 0 ? state.idx+1 : 0}/${words.length} (전체 ${totalWordsCount})`;
+      infoCount = `${words.length > 0 ? state.idx+1 : 0}/${words.length}`;
     } else {
       infoCount = `${state.idx+1}/${words.length}`;
     }
-    html += `<div class="info">${infoCount}</div>`;
+    html += renderHeader('goMenu()', infoCount);
+  } else {
+    html += renderHeader('goMenu()');
   }
 
   if (state.mode === "test") {
