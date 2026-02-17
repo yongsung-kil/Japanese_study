@@ -335,34 +335,35 @@ body {
   background:linear-gradient(90deg,transparent,rgba(233,69,96,.3),transparent);
 }
 .grammar-section-title {
-  font-size:14px; color:var(--accent); font-weight:700; letter-spacing:1px;
-  margin:10px 0 8px;
+  font-size:17px; color:var(--accent); font-weight:700; letter-spacing:1px;
+  margin:12px 0 10px;
 }
 .grammar-word-table {
   width:100%; border-collapse:collapse; margin-bottom:4px;
 }
 .grammar-word-table td {
-  padding:3px 6px; font-size:12px; border-bottom:1px solid rgba(255,255,255,.04);
+  padding:5px 6px; font-size:14px; border-bottom:1px solid rgba(255,255,255,.04);
 }
 .grammar-word-table .gw-word {
   color:#fff; font-family:'Noto Sans JP',sans-serif; font-weight:500;
-  white-space:nowrap;
+  white-space:nowrap; cursor:pointer; transition:color .15s;
 }
-.grammar-word-table .gw-read { color:var(--muted); font-size:11px; }
+.grammar-word-table .gw-word:active { color:var(--accent); }
+.grammar-word-table .gw-read { color:var(--muted); font-size:13px; }
 .grammar-word-table .gw-mean { color:var(--text); }
 .grammar-word-table .gw-pos {
-  color:var(--accent); font-size:10px; font-weight:500;
+  color:var(--accent); font-size:12px; font-weight:500;
   white-space:nowrap;
 }
 .grammar-point {
   background:rgba(233,69,96,.08); border-left:3px solid var(--accent);
-  border-radius:0 8px 8px 0; padding:6px 10px; margin-bottom:6px;
+  border-radius:0 8px 8px 0; padding:8px 12px; margin-bottom:8px;
 }
 .grammar-point-title {
-  font-size:13px; font-weight:700; color:var(--accent-soft);
+  font-size:15px; font-weight:700; color:var(--accent-soft);
   font-family:'Noto Sans JP','Noto Sans KR',sans-serif;
 }
-.grammar-point-desc { font-size:12px; color:var(--muted); margin-top:2px; }
+.grammar-point-desc { font-size:14px; color:var(--muted); margin-top:3px; }
 </style>
 </head>
 <body>
@@ -377,7 +378,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>[1,2,3,4,5,6,7,8,9,10,11,12,13].forEach(i=>{document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');});</script>
 <script>
-const APP_VERSION = "v26.02.18.00:46:58";
+const APP_VERSION = "v26.02.18.00:49:02";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1426,9 +1427,10 @@ function render() {
       html += `<div class="grammar-section-title">단어</div>`;
       html += `<table class="grammar-word-table">`;
       s.words.forEach(wd => {
-        const display = wd.rd ? wd.w + ' <span style="color:var(--muted);font-size:11px">(' + wd.rd + ')</span>' : wd.w;
+        const spkText = wd.w.replace(/'/g, "\\'");
+        const display = wd.rd ? wd.w + ' <span style="color:var(--muted);font-size:13px">(' + wd.rd + ')</span>' : wd.w;
         html += `<tr>
-          <td class="gw-word">${display}</td>
+          <td class="gw-word" onclick="event.stopPropagation();speakGrammar('${spkText}')">${display}</td>
           <td class="gw-mean">${wd.m}</td>
           <td class="gw-pos">${wd.p}</td>
         </tr>`;
