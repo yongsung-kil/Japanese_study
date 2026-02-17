@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.21:43:33";
+const APP_VERSION = "v26.02.17.21:45:02";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1134,7 +1134,6 @@ function render() {
     html += `<div class="menu-header" style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <div class="menu-header-title">日本語 단어장 <span style="font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0">${APP_VERSION}</span></div>
-        <div class="menu-header-sub">카테고리를 선택하세요 · 총 ${Object.values(WORD_DATA).reduce((s,d)=>s+d.words.length,0)}단어</div>
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
@@ -1188,7 +1187,6 @@ function render() {
           <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
           <div class="menu-header-title">🎧 퀴즈</div>
         </div>
-        <div class="menu-header-sub" style="margin-left:28px">퀴즈 유형을 선택하세요</div>
       </div>
     </div>`;
     html += `<div class="menu-list">`;
@@ -1300,7 +1298,6 @@ function render() {
           <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
           <div class="menu-header-title">${cat.title}</div>
         </div>
-        <div class="menu-header-sub" style="margin-left:28px">시즌을 선택하세요 · ${totalW}단어</div>
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
@@ -1348,7 +1345,6 @@ function render() {
           <button onclick="${backFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
           <div class="menu-header-title">${headerTitle}</div>
         </div>
-        <div class="menu-header-sub" style="margin-left:28px">학습 유형을 선택하세요</div>
       </div>
     </div>`;
     html += `<div class="menu-list">`;
@@ -1386,7 +1382,6 @@ function render() {
           <button onclick="goBackFromGrammar()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
           <div class="menu-header-title">📖 문장 분석</div>
         </div>
-        <div class="menu-header-sub" style="margin-left:28px">에피소드를 선택하세요</div>
       </div>
     </div>`;
     html += `<div class="menu-list">`;
@@ -1510,7 +1505,6 @@ function render() {
           <button onclick="${menuBackFn}" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
           <div class="menu-header-title">${menuTitle}</div>
         </div>
-        <div class="menu-header-sub" style="margin-left:28px">DAY를 선택하세요 · ${catDays.reduce((s,d)=>s+dayWords(d).length,0)}단어</div>
       </div>
       <button class="refresh-btn" style="font-size:22px;margin-top:4px" onclick="doRefresh()">↻</button>
     </div>`;
