@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.14:00:00";
+const APP_VERSION = "v26.02.17.17:00:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1317,7 +1317,7 @@ function render() {
       <div>
         <div style="display:flex;align-items:center;gap:8px">
           <button onclick="goBackFromGrammar()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;font-weight:900">◀</button>
-          <div class="menu-header-title">📖 문장 분석 <span style="font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0">${APP_VERSION}</span></div>
+          <div class="menu-header-title">📖 문장 분석</div>
         </div>
         <div class="menu-header-sub" style="margin-left:28px">에피소드를 선택하세요</div>
       </div>
@@ -1354,7 +1354,6 @@ function render() {
         <button onclick="state.mode='grammarMenu';skipPopstate=true;history.back();render()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
         <span class="logo" style="font-size:18px">📖</span><span class="logo-sub">${gData.title}</span>
       </div>
-      <span style="font-size:10px;color:var(--muted);font-weight:400">${APP_VERSION}</span>
     </div>`;
     html += `<div class="info">${state.grammarIdx+1} / ${total} 문장</div>`;
 
@@ -1485,10 +1484,12 @@ function render() {
     </div>`;
     html += `<div class="info">${state.listenType==='learned'?'외운 단어':'어려운 단어'} · ${state.listenIdx+1}/${state.listenWords.length}</div>`;
   } else {
+    const _cat = CATEGORIES[state.catIdx];
+    const _catLabel = _cat ? (_cat.title + (_cat.hasChildren ? ' 단어' : '')) : '단어장';
     html += `<div class="header">
       <div>
         <button onclick="goMenu()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo">日本語</span><span class="logo-sub">단어장</span>
+        <span class="logo" style="font-size:18px">📝</span><span class="logo-sub">${_catLabel}</span>
       </div>
       <button class="refresh-btn" onclick="doRefresh()">↻</button>
     </div>`;
