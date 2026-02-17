@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.21:40:45";
+const APP_VERSION = "v26.02.17.21:43:33";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1398,12 +1398,16 @@ function render() {
       const badgeText = glCnt === data.sentences.length ? "완료" : "✓ " + glCnt + "/" + data.sentences.length;
       html += `<div class="menu-item" onclick="openGrammar(${k})">
         <div class="menu-item-left">
-          <div class="menu-day" style="color:var(--accent)">EP ${String(k).padStart(2,'0')}</div>
           <div class="menu-title">${data.title}</div>
         </div>
         <div class="${badgeClass}">${badgeText}</div>
       </div>`;
     }
+    // 문장분석 전체 초기화 버튼
+    html += `<div style="padding:16px 0 8px;display:flex;gap:8px;justify-content:center">
+      <button onclick="resetGrammarCatLearned()" style="background:none;border:1px solid rgba(0,210,211,.3);color:var(--success);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px">✓ 외운 문장 전체 초기화</button>
+      <button onclick="resetGrammarCatDifficult()" style="background:none;border:1px solid rgba(255,215,0,.3);color:#ffd700;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px">★ 어려운 문장 전체 초기화</button>
+    </div>`;
     html += `</div>`;
     app.innerHTML = html;
     document.getElementById("settings-root").innerHTML = "";
@@ -1519,10 +1523,10 @@ function render() {
       const learnedCnt = dw.filter(w => state.bookmarks[d + "-" + w.h]).length;
       const badgeClass = learnedCnt === total ? "menu-badge clean" : "menu-badge";
       const badgeText = learnedCnt === total ? "완료" : "✓ " + learnedCnt + "/" + total;
-      const dayLabel = cat.hasChildren ? 'EP ' + String(d - cat.days[0] + 1).padStart(2,'0') : 'DAY ' + d;
+      const dayLabel = cat.hasChildren ? '' : 'DAY ' + d;
       html += `<div class="menu-item" onclick="openDay(${d})">
         <div class="menu-item-left">
-          <div class="menu-day">${dayLabel}</div>
+          ${dayLabel ? `<div class="menu-day">${dayLabel}</div>` : ''}
           <div class="menu-title">${data.title}</div>
         </div>
         <div class="${badgeClass}">${badgeText}</div>
@@ -2058,6 +2062,42 @@ function resetCatDifficult() {
     (WORD_DATA[d]?.words || []).forEach(w => { delete state.difficult[d+"-"+w.h]; });
   });
   saveDifficult(); render();
+}
+function resetGrammarCatLearned() {
+  const cat = getActiveCat();
+  const gKeys = cat.days ? getSeasonGrammarKeys(cat) : GRAMMAR_KEYS;
+  let count = 0;
+  gKeys.forEach(k => {
+    const data = GRAMMAR_DATA[k];
+    if (!data) return;
+    data.sentences.forEach((_, i) => { if (isGrammarLearned(k, i)) count++; });
+  });
+  if (count === 0) { alert("초기화할 외운 문장이 없어요."); return; }
+  if (!confirm(`외운 문장 ✓ ${count}개를 초기화할까요?`)) return;
+  gKeys.forEach(k => {
+    const data = GRAMMAR_DATA[k];
+    if (!data) return;
+    data.sentences.forEach((_, i) => { delete state.grammarLearned[gKey(k, i)]; });
+  });
+  saveGrammarLearned(); render();
+}
+function resetGrammarCatDifficult() {
+  const cat = getActiveCat();
+  const gKeys = cat.days ? getSeasonGrammarKeys(cat) : GRAMMAR_KEYS;
+  let count = 0;
+  gKeys.forEach(k => {
+    const data = GRAMMAR_DATA[k];
+    if (!data) return;
+    data.sentences.forEach((_, i) => { if (isGrammarDifficult(k, i)) count++; });
+  });
+  if (count === 0) { alert("초기화할 어려운 문장이 없어요."); return; }
+  if (!confirm(`어려운 문장 ★ ${count}개를 초기화할까요?`)) return;
+  gKeys.forEach(k => {
+    const data = GRAMMAR_DATA[k];
+    if (!data) return;
+    data.sentences.forEach((_, i) => { delete state.grammarDifficult[gKey(k, i)]; });
+  });
+  saveGrammarDifficult(); render();
 }
 function resetDayLearned() {
   const day = state.day;
