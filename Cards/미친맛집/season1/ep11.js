@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 11화
-WORD_DATA_MIKMAT[11] = { title: "11화 단어 (소년 마츠시게 소울푸드)", words: [
+WORD_DATA_MIKMAT[11] = { title: "11화 소울푸드", words: [
     // 명사
     {h:"まんじゅう",k:"饅頭",r:"manjuu",m:"만주"},
     {h:"ソウルフード",r:"souru fuudo",m:"소울 푸드"},

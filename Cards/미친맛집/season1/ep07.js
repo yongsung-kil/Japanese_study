@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 7화
-WORD_DATA_MIKMAT[7] = { title: "7화 단어 (30년 노포의 품격, 부일숯불갈비)", words: [
+WORD_DATA_MIKMAT[7] = { title: "7화 갈비", words: [
     // 명사
     {h:"ガイドブック",r:"gaidobukku",m:"가이드북"},
     {h:"えと",k:"干支",r:"eto",m:"띠/간지"},

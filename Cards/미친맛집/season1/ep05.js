@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 5화
-WORD_DATA_MIKMAT[5] = { title: "5화 단어 (해질녘 후지산과 환상적인 푸딩)", words: [
+WORD_DATA_MIKMAT[5] = { title: "5화 푸딩", words: [
     // 명사
     {h:"デート",r:"deeto",m:"데이트"},
     {h:"せいそう",k:"正装",r:"seisou",m:"정장/격식 차림"},

@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 6화
-WORD_DATA_MIKMAT[6] = { title: "6화 단어 (40년 단골 맛집, 노포 중식당)", words: [
+WORD_DATA_MIKMAT[6] = { title: "6화 중식당", words: [
     // 명사
     {h:"せき",k:"席",r:"seki",m:"좌석/석"},
     {h:"まち",k:"町",r:"machi",m:"거리/동네"},

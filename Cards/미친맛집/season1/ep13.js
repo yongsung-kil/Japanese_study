@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 13화
-WORD_DATA_MIKMAT[13] = { title: "13화 단어 (곱창계의 에르메스)", words: [
+WORD_DATA_MIKMAT[13] = { title: "13화 곱창", words: [
     // 명사
     {h:"うし",k:"牛",r:"ushi",m:"소"},
     {h:"コプチャン",r:"kopuchan",m:"곱창"},

@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 9화
-WORD_DATA_MIKMAT[9] = { title: "9화 단어 (단맛 충전소, 약수시장 디저트 투어)", words: [
+WORD_DATA_MIKMAT[9] = { title: "9화 디저트", words: [
     // 명사
     {h:"やくすいしじょう",k:"薬水市場",r:"yakusui shijou",m:"약수시장 (지명)"},
     {h:"かんこうきゃく",k:"観光客",r:"kankoukyaku",m:"관광객"},

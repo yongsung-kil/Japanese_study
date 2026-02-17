@@ -1,5 +1,5 @@
 // 미친맛집 시즌1 - 2화
-WORD_DATA_MIKMAT[2] = { title: "2화 단어 (일본에서 가장 비싼 치즈케이크)", words: [
+WORD_DATA_MIKMAT[2] = { title: "2화 치즈케이크", words: [
     // 명사
     {h:"かまくら",k:"鎌倉",r:"kamakura",m:"가마쿠라 (지명)"},
     {h:"えき",k:"駅",r:"eki",m:"역"},

@@ -36,8 +36,8 @@ body {
   width:100%; padding:10px 16px 4px;
   display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
 }
-.logo { font-size:22px; font-weight:900; color:var(--accent); font-family:'Noto Sans JP',sans-serif; }
-.logo-sub { font-size:13px; color:var(--muted); font-weight:300; margin-left:8px; }
+.logo { font-size:18px; font-weight:900; color:var(--accent); font-family:'Noto Sans JP',sans-serif; }
+.logo-sub { font-size:16px; color:var(--text); font-weight:700; margin-left:6px; font-family:'Noto Sans JP','Noto Sans KR',sans-serif; }
 .test-btn {
   background:var(--accent); border:none; border-radius:20px; padding:6px 14px;
   color:#fff; font-size:12px; font-weight:700; cursor:pointer;
@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>for(let i=1;i<=1;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>
-const APP_VERSION = "v26.02.17.17:00:00";
+const APP_VERSION = "v26.02.17.18:47:13";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -1212,7 +1212,7 @@ function render() {
     html += `<div class="header">
       <div>
         <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo" style="color:${typeColor}">🎧</span><span class="logo-sub">${typeLabel} 퀴즈</span>
+        <span class="logo" style="font-size:18px;color:${typeColor}">🎧</span><span class="logo-sub">${typeLabel} 퀴즈</span>
       </div>
     </div>`;
     html += `<div class="info">${typeLabel} · ${idx+1}/${total}</div>`;
@@ -1478,7 +1478,7 @@ function render() {
     html += `<div class="header">
       <div>
         <button onclick="goCategories()" style="background:none;border:none;color:var(--accent);font-size:24px;cursor:pointer;padding:0 8px 0 0;font-weight:900">◀</button>
-        <span class="logo" style="color:${state.listenType==='learned'?'var(--success)':'#ffd700'}">🎧</span><span class="logo-sub">${state.listenType==='learned'?'외운 단어 퀴즈':'어려운 단어 퀴즈'}</span>
+        <span class="logo" style="font-size:18px;color:${state.listenType==='learned'?'var(--success)':'#ffd700'}">🎧</span><span class="logo-sub">${state.listenType==='learned'?'외운 단어 퀴즈':'어려운 단어 퀴즈'}</span>
       </div>
       <button class="refresh-btn" onclick="doRefresh()">↻</button>
     </div>`;
