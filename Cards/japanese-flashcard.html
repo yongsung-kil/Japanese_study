@@ -377,7 +377,7 @@ body {
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>[1,2,3,4,5,6,7,8,9,10,11,13].forEach(i=>{document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');});</script>
 <script>
-const APP_VERSION = "v26.02.18.00:11:00";
+const APP_VERSION = "v26.02.18.00:10:20";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -652,6 +652,36 @@ const ttsAudio = new Audio();
 let ttsPlaying = false;
 let speakSeq = 0;
 
+// === PC 브라우저 오디오 잠금 해제 (Autoplay Policy 대응) ===
+// 데스크톱 브라우저는 사용자 상호작용 없이 audio.play() 차단
+// 첫 클릭/터치 시 무음 재생으로 잠금 해제
+(function() {
+  let unlocked = false;
+  function unlock() {
+    if (unlocked) return;
+    unlocked = true;
+    // AudioContext 해제 (Chrome/Edge)
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const s = ctx.createBufferSource();
+      s.buffer = buf; s.connect(ctx.destination); s.start(0);
+      ctx.resume().catch(() => {});
+    } catch(e) {}
+    // ttsAudio 엘리먼트 잠금 해제 (무음 WAV 재생)
+    const origSrc = ttsAudio.src;
+    ttsAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+    ttsAudio.volume = 0;
+    ttsAudio.play().then(() => {
+      ttsAudio.pause(); ttsAudio.volume = 1; ttsAudio.src = origSrc || "";
+    }).catch(() => { ttsAudio.volume = 1; unlocked = false; });
+    document.removeEventListener('click', unlock, true);
+    document.removeEventListener('touchstart', unlock, true);
+  }
+  document.addEventListener('click', unlock, { capture: true });
+  document.addEventListener('touchstart', unlock, { capture: true });
+})();
+
 // setTimeout 기반 딜레이
 function playDelayAudio(delayMs, callback) {
   setTimeout(() => { if (callback) callback(); }, delayMs);
@@ -718,25 +748,19 @@ function speakGoogleTTS(text, cb) {
   ttsAudio.volume = 1.0;
   ttsAudio.playbackRate = state.speed;
 
-  // 앞부분 잘림 방지: canplay 이벤트 후 재생 시작
-  function playWhenReady() {
-    ttsAudio.oncanplay = null;
-    ttsAudio.currentTime = 0;
-    ttsAudio.play().catch(() => onDone(true));
-  }
-
   // 캐시된 Blob이 있으면 사용 (네트워크 불필요 → 백그라운드 OK)
   const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
   if (ttsBlobs[text]) {
     ttsAudio.src = ttsBlobs[text];
-    // Blob은 이미 로드됨 → readyState 체크
-    if (ttsAudio.readyState >= 3) playWhenReady();
-    else { ttsAudio.oncanplay = playWhenReady; }
+    ttsAudio.currentTime = 0;
+    ttsAudio.play().catch(() => onDone(true));
   } else {
-    // 첫 재생: canplay 이벤트 대기 후 재생 + 동시에 Blob 캐시 (반복 재생용)
-    ttsAudio.oncanplay = playWhenReady;
+    // 첫 재생: 즉시 play() 시도 (PC 브라우저 Autoplay 대응)
+    // canplay 대기 시 사용자 제스처 컨텍스트가 끊겨 재생 차단됨
     ttsAudio.src = directUrl;
     ttsAudio.load();
+    ttsAudio.currentTime = 0;
+    ttsAudio.play().catch(() => onDone(true));
     fetch(directUrl).then(r => r.blob()).then(blob => {
       if (!ttsBlobs[text]) ttsBlobs[text] = URL.createObjectURL(blob);
     }).catch(() => {});
@@ -796,21 +820,15 @@ function speakKo(text, cb) {
   const cacheKey = "ko:" + clean;
   const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encodeURIComponent(clean)}`;
 
-  // 앞부분 잘림 방지: canplay 이벤트 후 재생 시작
-  function playWhenReadyKo() {
-    ttsAudio.oncanplay = null;
-    ttsAudio.currentTime = 0;
-    ttsAudio.play().catch(() => onDone(true));
-  }
-
   if (ttsBlobs[cacheKey]) {
     ttsAudio.src = ttsBlobs[cacheKey];
-    if (ttsAudio.readyState >= 3) playWhenReadyKo();
-    else { ttsAudio.oncanplay = playWhenReadyKo; }
+    ttsAudio.currentTime = 0;
+    ttsAudio.play().catch(() => onDone(true));
   } else {
-    ttsAudio.oncanplay = playWhenReadyKo;
     ttsAudio.src = directUrl;
     ttsAudio.load();
+    ttsAudio.currentTime = 0;
+    ttsAudio.play().catch(() => onDone(true));
     fetch(directUrl).then(r => r.blob()).then(blob => {
       if (!ttsBlobs[cacheKey]) ttsBlobs[cacheKey] = URL.createObjectURL(blob);
     }).catch(() => {});
