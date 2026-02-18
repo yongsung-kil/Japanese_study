@@ -1,6 +1,5 @@
 // 미친맛집 시즌1 - 1화 (Revision) 문장 분석
 // 대본 전체 문장 분석 (1~100)
-if (typeof GRAMMAR_DATA_MIKMAT_REV === 'undefined') GRAMMAR_DATA_MIKMAT_REV = [];
 GRAMMAR_DATA_MIKMAT_REV[1] = { title: "1話 常連 (Revision)", sentences: [
   // ===== 오프닝 / 소개 (1~8) =====
   {

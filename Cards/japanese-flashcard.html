@@ -377,8 +377,12 @@ body {
 <script>const GRAMMAR_DATA_MIKMAT = {};</script>
 <script>for(let i=1;i<=13;i++){document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'.js?_t='+Date.now()+'"><\/script>');}</script>
 <script>[1,2,3,4,5,6,7,8,9,10,11,12,13].forEach(i=>{document.write('<script src="미친맛집/season1/ep'+String(i).padStart(2,'0')+'_Grammar.js?_t='+Date.now()+'"><\/script>');});</script>
+<script>var WORD_DATA_MIKMAT_REV = {};</script>
+<script>var GRAMMAR_DATA_MIKMAT_REV = {};</script>
+<script>document.write('<script src="미친맛집_revision/season1/ep01.js?_t='+Date.now()+'"><\/script>');</script>
+<script>document.write('<script src="미친맛집_revision/season1/ep01_Grammar.js?_t='+Date.now()+'"><\/script>');</script>
 <script>
-const APP_VERSION = "v26.02.19.01:02:18";
+const APP_VERSION = "v26.02.19.01:06:00";
 
 // === 안드로이드 네비게이션 바 대응 ===
 // window.innerHeight로 실제 보이는 영역을 측정하여 CSS 변수로 설정
@@ -396,6 +400,7 @@ const CATEGORY_SOURCES = [
   { data: WORD_DATA_BASIC,        offset: 0   },
   { data: WORD_DATA_INTERMEDIATE, offset: 100 },
   { data: WORD_DATA_MIKMAT,       offset: 200 },
+  { data: WORD_DATA_MIKMAT_REV,   offset: 300 },
 ];
 CATEGORY_SOURCES.forEach(src => {
   Object.keys(src.data).forEach(k => {
@@ -408,6 +413,9 @@ const GRAMMAR_DATA = {};
 Object.keys(GRAMMAR_DATA_MIKMAT).forEach(k => {
   GRAMMAR_DATA[Number(k)] = GRAMMAR_DATA_MIKMAT[k];
 });
+Object.keys(GRAMMAR_DATA_MIKMAT_REV).forEach(k => {
+  GRAMMAR_DATA[Number(k) + 100] = GRAMMAR_DATA_MIKMAT_REV[k];
+});
 const GRAMMAR_KEYS = Object.keys(GRAMMAR_DATA).map(Number).sort((a,b)=>a-b);
 
 const DAYS = Object.keys(WORD_DATA).map(Number).sort((a,b)=>a-b);
@@ -419,6 +427,7 @@ const CATEGORIES = [
   { id: "mikmat", title: "미친맛집(隣の国のグルメイト)",
     children: [
       { id: "mikmat-s1", title: "Season 1", days: DAYS.filter(d => d >= 200 && d <= 299), hasChildren: true },
+      { id: "mikmat-rev", title: "Season 1 (Revision)", days: DAYS.filter(d => d >= 300 && d <= 399), hasChildren: true },
     ]
   },
 ];

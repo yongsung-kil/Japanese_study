@@ -1,6 +1,5 @@
 // 미친맛집 시즌1 - 1화 (Revision) 단어 데이터
 // 대본 1~100 문장에서 추출한 단어
-if (typeof WORD_DATA_MIKMAT_REV === 'undefined') WORD_DATA_MIKMAT_REV = [];
 WORD_DATA_MIKMAT_REV[1] = { title: "1話 常連 (Revision)", words: [
     // ===== 명사 =====
     {h:"ドラマ",r:"dorama",m:"드라마",ex:"日本のドラマ「孤独のグルメ」",exm:"일본의 드라마 '고독한 미식가'"},
